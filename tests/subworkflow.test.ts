@@ -1,0 +1,85 @@
+import { describe, it, expect } from "bun:test";
+import { runWorkflow } from "../src/execute.js";
+import { parse } from "../src/schemas.js";
+import { SubWorkflowNotFoundError } from "../src/errors.js";
+import type { WorkflowNode, WorkflowState } from "../src/schemas.js";
+
+const SUB_WORKFLOW_JSON = {
+  version: "1.0",
+  graph_id: "sub_01",
+  entry_point: "sub_step",
+  nodes: [{ id: "sub_step", type: "task" }],
+  edges: [],
+};
+
+const MAIN_WORKFLOW_JSON = {
+  version: "1.0",
+  graph_id: "main_01",
+  entry_point: "entry",
+  nodes: [
+    { id: "entry", type: "task" },
+    { id: "sub_node", type: "sub_workflow", workflow_id: "sub_01" },
+    { id: "exit", type: "task" },
+  ],
+  edges: [
+    { from: "entry", to: "sub_node", type: "standard" },
+    { from: "sub_node", to: "exit", type: "standard" },
+  ],
+};
+
+describe("sub_workflow nodes", () => {
+  const visited: string[] = [];
+  const handler = async (node: WorkflowNode, state: WorkflowState) => {
+    visited.push(node.id);
+    return state;
+  };
+
+  it("executes sub-workflow nodes inline", async () => {
+    visited.length = 0;
+    const workflow = parse(MAIN_WORKFLOW_JSON);
+    await runWorkflow(workflow, {}, {
+      handlers: { task: handler },
+      registry: { sub_01: SUB_WORKFLOW_JSON },
+    });
+    expect(visited).toContain("sub_step");
+    expect(visited).toContain("exit");
+  });
+
+  it("prefixes sub-workflow event nodeIds with parent nodeId", async () => {
+    visited.length = 0;
+    const workflow = parse(MAIN_WORKFLOW_JSON);
+    const { trace } = await runWorkflow(workflow, {}, {
+      handlers: { task: handler },
+      registry: { sub_01: SUB_WORKFLOW_JSON },
+    });
+
+    const subNodeEvent = trace.find(
+      (e) => e.type === "node_start" && (e as any).nodeId === "sub_node/sub_step",
+    );
+    expect(subNodeEvent).toBeDefined();
+  });
+
+  it("propagates sub-workflow final state to parent", async () => {
+    const workflow = parse(MAIN_WORKFLOW_JSON);
+    const enrichingHandler = async (node: WorkflowNode, state: WorkflowState) => ({
+      ...state,
+      [node.id]: true,
+    });
+    const { state } = await runWorkflow(workflow, {}, {
+      handlers: { task: enrichingHandler },
+      registry: { sub_01: SUB_WORKFLOW_JSON },
+    });
+    expect(state["sub_step"]).toBe(true);
+    expect(state["exit"]).toBe(true);
+  });
+
+  it("throws SubWorkflowNotFoundError when workflow_id not in registry", async () => {
+    const workflow = parse(MAIN_WORKFLOW_JSON);
+    await expect(
+      runWorkflow(workflow, {}, {
+        handlers: { task: handler },
+        registry: {},
+      }),
+    ).rejects.toThrow(SubWorkflowNotFoundError);
+  });
+});
