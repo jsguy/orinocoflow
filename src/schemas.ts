@@ -29,6 +29,8 @@ export const ConditionalEdgeSchema = z.object({
     true: z.string(),
     false: z.string(),
   }),
+  maxRetries: z.number().int().nonnegative().optional(),
+  onExhausted: z.string().optional(),
 });
 
 export const EdgeSchema = z.discriminatedUnion("type", [
@@ -66,6 +68,21 @@ export type WorkflowEvent =
   | { type: "workflow_start"; workflowId: string; entryPoint: string }
   | { type: "node_start"; nodeId: string; nodeType: string; state: WorkflowState }
   | { type: "node_complete"; nodeId: string; nodeType: string; state: WorkflowState; durationMs: number }
-  | { type: "edge_taken"; from: string; to: string; edgeType: "standard" | "conditional"; conditionResult?: boolean }
+  | { type: "edge_taken"; from: string; to: string; edgeType: "standard" | "conditional"; conditionResult?: boolean; retriesExhausted?: boolean; onExhausted?: string }
   | { type: "workflow_complete"; finalState: WorkflowState; durationMs: number }
+  | { type: "workflow_suspended"; nodeId: string }
+  | { type: "workflow_resume" }
   | { type: "error"; nodeId?: string; error: Error };
+
+// ─── Suspend / Resume types ───────────────────────────────────────────────────
+
+export interface SuspendedExecution<S = WorkflowState> {
+  workflowId: string;
+  suspendedAtNodeId: string;
+  state: S;
+  workflowSnapshot: Workflow;
+}
+
+export type WorkflowResult<S = WorkflowState> =
+  | { status: "completed"; state: S; trace: WorkflowEvent[] }
+  | { status: "suspended"; snapshot: SuspendedExecution<S>; trace: WorkflowEvent[] };

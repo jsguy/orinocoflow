@@ -45,3 +45,10 @@ export class SubWorkflowNotFoundError extends Error {
     this.name = "SubWorkflowNotFoundError";
   }
 }
+
+export class WorkflowConfigurationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "WorkflowConfigurationError";
+  }
+}

@@ -22,10 +22,19 @@ const makeLinearWorkflow = () =>
 
 const identityHandler = async (_node: WorkflowNode, state: WorkflowState) => state;
 
+// Helper: assert completed and unwrap
+async function runCompleted(
+  ...args: Parameters<typeof runWorkflow>
+) {
+  const result = await runWorkflow(...args);
+  if (result.status !== "completed") throw new Error("Expected completed, got suspended");
+  return result;
+}
+
 describe("runWorkflow", () => {
   it("executes linear workflow and returns final state", async () => {
     const workflow = makeLinearWorkflow();
-    const { state, trace } = await runWorkflow(
+    const { state, trace } = await runCompleted(
       workflow,
       { value: 42 },
       { handlers: { task: identityHandler } },
@@ -36,7 +45,7 @@ describe("runWorkflow", () => {
 
   it("emits workflow_start, node_start, node_complete, edge_taken, workflow_complete", async () => {
     const workflow = makeLinearWorkflow();
-    const { trace } = await runWorkflow(
+    const { trace } = await runCompleted(
       workflow,
       {},
       { handlers: { task: identityHandler } },
@@ -56,7 +65,7 @@ describe("runWorkflow", () => {
       seen.push(node.id);
       return { ...state, visited: [...((state.visited as string[]) ?? []), node.id] };
     };
-    const { state } = await runWorkflow(workflow, {}, { handlers: { task: handler } });
+    const { state } = await runCompleted(workflow, {}, { handlers: { task: handler } });
     expect(seen).toEqual(["step_a", "step_b", "step_c"]);
     expect(state.visited).toEqual(["step_a", "step_b", "step_c"]);
   });

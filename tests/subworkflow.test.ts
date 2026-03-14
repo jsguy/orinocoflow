@@ -48,10 +48,12 @@ describe("sub_workflow nodes", () => {
   it("prefixes sub-workflow event nodeIds with parent nodeId", async () => {
     visited.length = 0;
     const workflow = parse(MAIN_WORKFLOW_JSON);
-    const { trace } = await runWorkflow(workflow, {}, {
+    const result = await runWorkflow(workflow, {}, {
       handlers: { task: handler },
       registry: { sub_01: SUB_WORKFLOW_JSON },
     });
+    if (result.status !== "completed") throw new Error("expected completed");
+    const { trace } = result;
 
     const subNodeEvent = trace.find(
       (e) => e.type === "node_start" && (e as any).nodeId === "sub_node/sub_step",
@@ -65,10 +67,12 @@ describe("sub_workflow nodes", () => {
       ...state,
       [node.id]: true,
     });
-    const { state } = await runWorkflow(workflow, {}, {
+    const result = await runWorkflow(workflow, {}, {
       handlers: { task: enrichingHandler },
       registry: { sub_01: SUB_WORKFLOW_JSON },
     });
+    if (result.status !== "completed") throw new Error("expected completed");
+    const { state } = result;
     expect(state["sub_step"]).toBe(true);
     expect(state["exit"]).toBe(true);
   });

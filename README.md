@@ -4,6 +4,8 @@ Minimalist TypeScript workflow engine for AI pipelines. Define workflows as JSON
 
 ## Install
 
+**Requirements:** Node.js 18+ or Bun 1.0+. The examples and test scripts use Bun — install it from [bun.sh](https://bun.sh) if you want to run those.
+
 ```sh
 npm install orinocoflow
 # or
@@ -30,13 +32,16 @@ const workflow = parse({
   ],
 });
 
-const { state } = await runWorkflow(workflow, { url: "https://example.com" }, {
+const result = await runWorkflow(workflow, { url: "https://example.com" }, {
   handlers: {
     integration: async (node, state) => ({ ...state, body: "<fetched>" }),
     llm:         async (node, state) => ({ ...state, draft: "Once upon a time..." }),
     local_script: async (node, state) => { console.log("publishing"); return state; },
   },
 });
+if (result.status === "completed") {
+  console.log(result.state);
+}
 ```
 
 ## Run the example
@@ -58,7 +63,7 @@ Two interfaces — pick whichever fits your code style.
 **Callback (`onEvent`)** — pass a handler in options, execution proceeds normally:
 
 ```ts
-const { state, trace } = await runWorkflow(workflow, initialState, {
+const result = await runWorkflow(workflow, initialState, {
   handlers,
   onEvent(event) {
     switch (event.type) {
@@ -66,6 +71,7 @@ const { state, trace } = await runWorkflow(workflow, initialState, {
       case "node_complete": console.log(`done in ${event.durationMs}ms`); break;
       case "edge_taken":    console.log(`→ ${event.from} to ${event.to}`); break;
       case "workflow_complete": console.log("final state:", event.finalState); break;
+      case "workflow_suspended": console.log(`suspended at ${event.nodeId}`); break;
       case "error":         console.error(event.error); break;
     }
   },
@@ -137,8 +143,11 @@ Supported operators: `<` `>` `<=` `>=` `===` `!==` `includes` `startsWith` `ends
 // Parse raw JSON into a typed Workflow
 parse(raw: unknown): Workflow
 
-// Run workflow — returns final state + full trace; onEvent fires as execution proceeds
-runWorkflow(workflow, initialState, options): Promise<{ state, trace }>
+// Run workflow — returns WorkflowResult (completed or suspended)
+runWorkflow(workflow, initialState, options): Promise<WorkflowResult>
+
+// Resume a suspended workflow from a SuspendedExecution snapshot
+resumeWorkflow(snapshot, resumeOptions): Promise<WorkflowResult>
 
 // Stream workflow events via for-await
 runWorkflowStream(workflow, initialState, options): AsyncIterable<WorkflowEvent>
@@ -170,6 +179,85 @@ await runWorkflow(mainWorkflow, {}, {
   },
 });
 ```
+
+## Human-in-the-loop (pause / resume)
+
+**orinocoflow does not store sessions.** Add an `interrupt` node anywhere in your workflow to pause execution. `runWorkflow` returns `{ status: "suspended", snapshot }` — a plain JSON-serializable `SuspendedExecution` object. You are responsible for storing it and retrieving it when the external event arrives.
+
+The `SessionStore` interface defines the contract:
+
+```ts
+import type { SessionStore } from "orinocoflow";
+
+// interface SessionStore {
+//   get(id: string): Promise<SuspendedExecution | undefined>
+//   set(id: string, snapshot: SuspendedExecution): Promise<void>
+//   delete(id: string): Promise<void>
+// }
+```
+
+orinocoflow ships a `MemorySessionStore` (Map-backed) for dev/testing:
+
+```ts
+import { parse, runWorkflow, resumeWorkflow, MemorySessionStore } from "orinocoflow";
+
+const sessions = new MemorySessionStore(); // swap for Postgres/Firestore/Redis adapter
+
+const workflow = parse({
+  version: "1.0",
+  graph_id: "hitl_pipeline",
+  entry_point: "draft",
+  nodes: [
+    { id: "draft",   type: "llm" },
+    { id: "review",  type: "interrupt" },   // <-- pauses here
+    { id: "publish", type: "local_script" },
+  ],
+  edges: [
+    { from: "draft",  to: "review",  type: "standard" },
+    { from: "review", to: "publish", type: "standard" },
+  ],
+});
+
+// First run — suspends at "review"
+const result = await runWorkflow(workflow, {}, { handlers });
+if (result.status === "suspended") {
+  const sessionId = crypto.randomUUID();
+  await sessions.set(sessionId, result.snapshot);
+  // → send sessionId to human (email, Slack, webhook)
+}
+
+// Later — webhook / API handler:
+const snapshot = await sessions.get(sessionId);
+const resumed = await resumeWorkflow(snapshot, {
+  handlers,
+  state: { approved: true },   // merged onto snapshot state
+});
+if (resumed.status === "completed") {
+  console.log("published:", resumed.state);
+}
+await sessions.delete(sessionId);
+```
+
+`interrupt` nodes require no handler — the engine handles suspension automatically. `MemorySessionStore` is lost on process restart. For production, implement `SessionStore` against your preferred store (Postgres JSONB column, Firestore document, Redis `SETEX`, etc.).
+
+## Retry limits on conditional edges
+
+Add `maxRetries` and `onExhausted` to any `ConditionalEdge` to automatically escalate after N loopbacks:
+
+```json
+{
+  "from": "qe",
+  "type": "conditional",
+  "condition": { "field": "passed", "operator": "===", "value": true },
+  "routes": { "true": "done", "false": "coder" },
+  "maxRetries": 3,
+  "onExhausted": "human_review"
+}
+```
+
+The engine tracks retry counts in `state.__retries__` (a reserved namespace). Once the loopback branch has been taken `maxRetries` times, routing falls through to `onExhausted` instead. Retry state survives pause/resume cycles automatically since it lives in the workflow state.
+
+The `edge_taken` event includes `retriesExhausted: true` and `onExhausted: "<nodeId>"` when the limit is hit.
 
 ## Cancellation
 

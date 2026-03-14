@@ -1,4 +1,4 @@
-import type { Workflow, WorkflowState, WorkflowEvent, WorkflowNode } from "./schemas.js";
+import type { Workflow, WorkflowState, WorkflowEvent, WorkflowNode, WorkflowResult, SuspendedExecution } from "./schemas.js";
 import { parse } from "./schemas.js";
 import { resolveNextNode } from "./router.js";
 import {
@@ -26,17 +26,28 @@ export interface RunOptions {
   _nodeIdPrefix?: string;
 }
 
+export interface ResumeOptions {
+  /** Additional state to merge onto the snapshot state (takes precedence) */
+  state?: WorkflowState;
+  handlers: RunOptions["handlers"];
+  registry?: RunOptions["registry"];
+  maxSteps?: RunOptions["maxSteps"];
+  signal?: RunOptions["signal"];
+  onEvent?: RunOptions["onEvent"];
+}
+
 /**
  * Core execution engine — plain async/await, no generators.
  * Calls emit synchronously for each WorkflowEvent as it occurs.
- * Returns the final WorkflowState.
+ * Returns WorkflowResult (completed or suspended).
  */
 async function _execute(
   workflow: Workflow,
   initialState: WorkflowState,
   options: RunOptions,
   emit: (event: WorkflowEvent) => void,
-): Promise<WorkflowState> {
+  entryNodeId?: string,
+): Promise<WorkflowResult> {
   const {
     handlers,
     registry = {},
@@ -52,10 +63,10 @@ async function _execute(
   emit({
     type: "workflow_start",
     workflowId: workflow.graph_id,
-    entryPoint: prefix(workflow.entry_point),
+    entryPoint: prefix(entryNodeId ?? workflow.entry_point),
   });
 
-  let currentNodeId: string | undefined = workflow.entry_point;
+  let currentNodeId: string | undefined = entryNodeId ?? workflow.entry_point;
   let currentState: WorkflowState = { ...initialState };
 
   while (currentNodeId !== undefined) {
@@ -79,6 +90,18 @@ async function _execute(
 
     const prefixedNodeId = prefix(node.id);
 
+    // ── Interrupt node: suspend execution ─────────────────────────────────────
+    if (node.type === "interrupt") {
+      const snapshot: SuspendedExecution = {
+        workflowId: workflow.graph_id,
+        suspendedAtNodeId: node.id,
+        state: currentState,
+        workflowSnapshot: workflow,
+      };
+      emit({ type: "workflow_suspended", nodeId: prefixedNodeId });
+      return { status: "suspended", snapshot, trace: [] }; // trace assembled by caller
+    }
+
     emit({
       type: "node_start",
       nodeId: prefixedNodeId,
@@ -99,12 +122,17 @@ async function _execute(
           throw new SubWorkflowNotFoundError(subWorkflowId);
         }
         const subWorkflow = parse(rawSubWorkflow);
-        currentState = await _execute(
+        const subResult = await _execute(
           subWorkflow,
           currentState,
           { handlers, registry, maxSteps: maxSteps - steps, signal, _nodeIdPrefix: prefixedNodeId },
           emit,
         );
+        if (subResult.status === "suspended") {
+          // Propagate suspension upward
+          return subResult;
+        }
+        currentState = subResult.state;
       } else {
         const handler = handlers[node.type] ?? handlers[node.id];
         if (!handler) {
@@ -136,7 +164,7 @@ async function _execute(
       durationMs: Date.now() - nodeStart,
     });
 
-    const resolution = resolveNextNode(currentNodeId, workflow.edges, currentState);
+    const resolution = resolveNextNode(currentNodeId, workflow.edges, currentState, workflow.nodes);
 
     if (resolution !== undefined) {
       emit({
@@ -145,6 +173,7 @@ async function _execute(
         to: prefix(resolution.nextNodeId),
         edgeType: resolution.edgeType,
         conditionResult: resolution.conditionResult,
+        ...(resolution.retriesExhausted ? { retriesExhausted: true, onExhausted: resolution.onExhausted } : {}),
       });
       currentNodeId = resolution.nextNodeId;
     } else {
@@ -158,7 +187,7 @@ async function _execute(
     durationMs: Date.now() - workflowStart,
   });
 
-  return currentState;
+  return { status: "completed", state: currentState, trace: [] }; // trace assembled by caller
 }
 
 /**
@@ -169,13 +198,54 @@ export async function runWorkflow(
   workflow: Workflow,
   initialState: WorkflowState,
   options: RunOptions,
-): Promise<{ state: WorkflowState; trace: WorkflowEvent[] }> {
+): Promise<WorkflowResult> {
   const trace: WorkflowEvent[] = [];
-  const finalState = await _execute(workflow, initialState, options, (event) => {
+  const result = await _execute(workflow, initialState, options, (event) => {
     trace.push(event);
     options.onEvent?.(event);
   });
-  return { state: finalState, trace };
+  return { ...result, trace };
+}
+
+/**
+ * Resume a previously suspended workflow from its snapshot.
+ * Optionally merge additional state (options.state takes precedence over snapshot.state).
+ */
+export async function resumeWorkflow(
+  snapshot: SuspendedExecution,
+  options: ResumeOptions,
+): Promise<WorkflowResult> {
+  const workflow = snapshot.workflowSnapshot;
+  const mergedState: WorkflowState = { ...snapshot.state, ...(options.state ?? {}) };
+
+  // Resolve the entry node: the successor of the interrupt node
+  const resolution = resolveNextNode(snapshot.suspendedAtNodeId, workflow.edges, mergedState, workflow.nodes);
+  const entryNodeId = resolution?.nextNodeId;
+
+  const trace: WorkflowEvent[] = [];
+  const emit = (event: WorkflowEvent) => {
+    trace.push(event);
+    options.onEvent?.(event);
+  };
+
+  emit({ type: "workflow_resume" });
+
+  if (entryNodeId === undefined) {
+    // Interrupt was the terminal node
+    emit({ type: "workflow_complete", finalState: mergedState, durationMs: 0 });
+    return { status: "completed", state: mergedState, trace };
+  }
+
+  const runOptions: RunOptions = {
+    handlers: options.handlers,
+    registry: options.registry,
+    maxSteps: options.maxSteps,
+    signal: options.signal,
+    onEvent: options.onEvent,
+  };
+
+  const result = await _execute(workflow, mergedState, runOptions, emit, entryNodeId);
+  return { ...result, trace };
 }
 
 /**
