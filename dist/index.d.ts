@@ -1,5 +1,4 @@
 export { parse } from "./schemas.js";
-export { compileFile, transformYamlToWorkflow } from "./cli/compile.js";
 export { runWorkflowStream, runWorkflow, resumeWorkflow } from "./execute.js";
 export type { RunOptions, ResumeOptions } from "./execute.js";
 export { evaluateOperator, resolveNextNode } from "./router.js";

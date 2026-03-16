@@ -27,15 +27,15 @@ The system SHALL parse a `.json` file using `JSON.parse()` and validate the resu
 - **THEN** it throws a Zod `ZodError`
 
 ### Requirement: Programmatic transformation function
-The system SHALL export `transformYamlToWorkflow(doc: unknown): Workflow` which validates any parsed document against the schema. This is equivalent to calling `parse(doc)` directly.
+The system SHALL export `compileFile` and `transformYamlToWorkflow` exclusively from the `"orinocoflow/compile"` sub-path. These functions SHALL NOT be re-exported from the main `"orinocoflow"` entry point.
 
-#### Scenario: Valid parsed document
-- **WHEN** `transformYamlToWorkflow(validDoc)` is called with a valid workflow object
-- **THEN** it returns a typed `Workflow`
+#### Scenario: Import from sub-path succeeds
+- **WHEN** a consumer runs `import { compileFile } from "orinocoflow/compile"`
+- **THEN** `compileFile` is a callable function
 
-#### Scenario: Invalid document
-- **WHEN** `transformYamlToWorkflow(invalidDoc)` is called with an object that fails schema validation
-- **THEN** it throws a `ZodError`
+#### Scenario: Import from main entry is undefined
+- **WHEN** a consumer runs `import { compileFile } from "orinocoflow"`
+- **THEN** `compileFile` is not present in the module exports
 
 ### Requirement: Unsupported file extension error
 The system SHALL throw a descriptive error when given a file path with an extension other than `.yaml`, `.yml`, or `.json`.

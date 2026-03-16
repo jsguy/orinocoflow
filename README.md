@@ -2,7 +2,7 @@
 
 Minimalist TypeScript workflow engine for AI pipelines. Define workflows as JSON, supply handlers, get streaming execution events.
 
-![Orinocoflow birdy](./src/orinocoflow-logo.png)
+![Orinocoflow birdy](https://raw.githubusercontent.com/jsguy/orinocoflow/main/src/orinocoflow-logo.png)
 
 ## What do you get?
 
