@@ -1,6 +1,6 @@
 {
   "name": "orinocoflow",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Minimalist TypeScript workflow engine for AI pipelines",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -9,8 +9,13 @@
   "bin": {
     "oflow": "./dist/cli/index.js"
   },
-  "files": ["dist", "README.md"],
-  "engines": { "node": ">=18.0.0" },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "exports": {
     ".": {
       "bun": "./src/index.ts",
