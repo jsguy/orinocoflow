@@ -1,0 +1,16 @@
+# Mock handler data for oflow simulate
+# Each key is a node id; .N suffix overrides data on the Nth invocation.
+# Handlers merge returned data into workflow state.
+
+handlers:
+  provision: {}
+  harness:
+    harness_success: true
+  verify:
+    verify_passed: false
+  verify.2:
+    verify_passed: true
+  create_pr:
+    prUrl: "https://github.com/example/repo/pull/42"
+  notify: {}
+  teardown: {}

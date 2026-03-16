@@ -1,0 +1,36 @@
+{
+  "version": "1.0",
+  "graph_id": "odt-pipeline",
+  "entry_point": "provision",
+  "nodes": [
+    { "id": "provision", "type": "provision" },
+    { "id": "harness", "type": "harness" },
+    { "id": "verify", "type": "verify" },
+    { "id": "fix", "type": "fix" },
+    { "id": "create_pr", "type": "create_pr" },
+    { "id": "handoff", "type": "handoff" },
+    { "id": "notify", "type": "notify" },
+    { "id": "teardown", "type": "teardown" }
+  ],
+  "edges": [
+    { "from": "provision", "to": "harness", "type": "standard" },
+    {
+      "from": "harness",
+      "type": "conditional",
+      "condition": { "field": "harness_success", "operator": "===", "value": true },
+      "routes": { "true": "verify", "false": "handoff" }
+    },
+    {
+      "from": "verify",
+      "type": "conditional",
+      "condition": { "field": "verify_passed", "operator": "===", "value": true },
+      "routes": { "true": "create_pr", "false": "fix" },
+      "maxRetries": 3,
+      "onExhausted": "handoff"
+    },
+    { "from": "fix", "to": "verify", "type": "standard" },
+    { "from": "create_pr", "to": "notify", "type": "standard" },
+    { "from": "handoff", "to": "notify", "type": "standard" },
+    { "from": "notify", "to": "teardown", "type": "standard" }
+  ]
+}

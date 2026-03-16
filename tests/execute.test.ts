@@ -164,3 +164,32 @@ describe("runWorkflowStream", () => {
     expect(events[events.length - 1]).toBe("workflow_complete");
   });
 });
+
+describe("handler resolution", () => {
+  const makeVerifyWorkflow = () =>
+    parse({
+      version: "1.0",
+      graph_id: "verify_01",
+      entry_point: "my-verify",
+      nodes: [{ id: "my-verify", type: "verify" }],
+      edges: [],
+    });
+
+  it("type handler takes priority when both type and id are registered", async () => {
+    const typeCalled = mock(() => ({}));
+    const idCalled = mock(() => ({}));
+    const workflow = makeVerifyWorkflow();
+    await runWorkflow(workflow, {}, { handlers: { verify: typeCalled, "my-verify": idCalled } });
+    expect(typeCalled).toHaveBeenCalledTimes(1);
+    expect(idCalled).not.toHaveBeenCalled();
+  });
+
+  it("id handler used as fallback when type is not registered", async () => {
+    const idCalled = mock(() => ({}));
+    const workflow = makeVerifyWorkflow();
+    await expect(
+      runWorkflow(workflow, {}, { handlers: { "my-verify": idCalled } })
+    ).resolves.toBeDefined();
+    expect(idCalled).toHaveBeenCalledTimes(1);
+  });
+});

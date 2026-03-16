@@ -87,3 +87,52 @@ describe("sub_workflow nodes", () => {
     ).rejects.toThrow(SubWorkflowNotFoundError);
   });
 });
+
+describe("sub_workflow suspension propagation", () => {
+  const CHILD_WITH_INTERRUPT = {
+    version: "1.0",
+    graph_id: "child_suspend",
+    entry_point: "child_task",
+    nodes: [
+      { id: "child_task", type: "task" },
+      { id: "pause", type: "interrupt" },
+    ],
+    edges: [{ from: "child_task", to: "pause", type: "standard" }],
+  };
+
+  const PARENT_WITH_SUB = {
+    version: "1.0",
+    graph_id: "parent_suspend",
+    entry_point: "setup",
+    nodes: [
+      { id: "setup", type: "task" },
+      { id: "sub_node", type: "sub_workflow", workflow_id: "child_suspend" },
+      { id: "after", type: "task" },
+    ],
+    edges: [
+      { from: "setup", to: "sub_node", type: "standard" },
+      { from: "sub_node", to: "after", type: "standard" },
+    ],
+  };
+
+  it("returns suspended when sub-workflow hits an interrupt node", async () => {
+    const workflow = parse(PARENT_WITH_SUB);
+    const result = await runWorkflow(workflow, {}, {
+      handlers: { task: async (_node, state) => state },
+      registry: { child_suspend: CHILD_WITH_INTERRUPT },
+    });
+    expect(result.status).toBe("suspended");
+  });
+
+  it("snapshot state includes parent state accumulated before sub-workflow", async () => {
+    const workflow = parse(PARENT_WITH_SUB);
+    const result = await runWorkflow(workflow, {}, {
+      handlers: {
+        task: async (node, state) => ({ ...state, [node.id]: true }),
+      },
+      registry: { child_suspend: CHILD_WITH_INTERRUPT },
+    });
+    if (result.status !== "suspended") throw new Error("expected suspended");
+    expect(result.snapshot.state["setup"]).toBe(true);
+  });
+});
