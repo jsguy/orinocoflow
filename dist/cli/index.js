@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { createRequire } from "node:module";
 var __defProp = Object.defineProperty;
 var __commonJS = (cb, mod) => () => (mod || cb((mod = { exports: {} }).exports, mod), mod.exports);
@@ -298,8 +299,8 @@ var require_directives = __commonJS((exports) => {
             this.yaml.version = version;
             return true;
           } else {
-            const isValid2 = /^\d+\.\d+$/.test(version);
-            onError(6, `Unsupported YAML version ${version}`, isValid2);
+            const isValid = /^\d+\.\d+$/.test(version);
+            onError(6, `Unsupported YAML version ${version}`, isValid);
             return false;
           }
         }
@@ -4769,7 +4770,7 @@ var require_composer = __commonJS((exports) => {
   var node_process = __require("process");
   var directives = require_directives();
   var Document = require_Document();
-  var errors2 = require_errors();
+  var errors = require_errors();
   var identity = require_identity();
   var composeDoc = require_compose_doc();
   var resolveEnd = require_resolve_end();
@@ -4820,9 +4821,9 @@ var require_composer = __commonJS((exports) => {
       this.onError = (source, code, message, warning) => {
         const pos = getErrorPos(source);
         if (warning)
-          this.warnings.push(new errors2.YAMLWarning(pos, code, message));
+          this.warnings.push(new errors.YAMLWarning(pos, code, message));
         else
-          this.errors.push(new errors2.YAMLParseError(pos, code, message));
+          this.errors.push(new errors.YAMLParseError(pos, code, message));
       };
       this.directives = new directives.Directives({ version: options.version || "1.2" });
       this.options = options;
@@ -4906,7 +4907,7 @@ ${cb}` : comment;
           break;
         case "error": {
           const msg = token.source ? `${token.message}: ${JSON.stringify(token.source)}` : token.message;
-          const error = new errors2.YAMLParseError(getErrorPos(token), "UNEXPECTED_TOKEN", msg);
+          const error = new errors.YAMLParseError(getErrorPos(token), "UNEXPECTED_TOKEN", msg);
           if (this.atDirectives || !this.doc)
             this.errors.push(error);
           else
@@ -4916,7 +4917,7 @@ ${cb}` : comment;
         case "doc-end": {
           if (!this.doc) {
             const msg = "Unexpected doc-end without preceding document";
-            this.errors.push(new errors2.YAMLParseError(getErrorPos(token), "UNEXPECTED_TOKEN", msg));
+            this.errors.push(new errors.YAMLParseError(getErrorPos(token), "UNEXPECTED_TOKEN", msg));
             break;
           }
           this.doc.directives.docEnd = true;
@@ -4931,7 +4932,7 @@ ${end.comment}` : end.comment;
           break;
         }
         default:
-          this.errors.push(new errors2.YAMLParseError(getErrorPos(token), "UNEXPECTED_TOKEN", `Unsupported token ${token.type}`));
+          this.errors.push(new errors.YAMLParseError(getErrorPos(token), "UNEXPECTED_TOKEN", `Unsupported token ${token.type}`));
       }
     }
     *end(forceDoc = false, endOffset = -1) {
@@ -4957,7 +4958,7 @@ ${end.comment}` : end.comment;
 var require_cst_scalar = __commonJS((exports) => {
   var resolveBlockScalar = require_resolve_block_scalar();
   var resolveFlowScalar = require_resolve_flow_scalar();
-  var errors2 = require_errors();
+  var errors = require_errors();
   var stringifyString = require_stringifyString();
   function resolveAsScalar(token, strict = true, onError) {
     if (token) {
@@ -4966,7 +4967,7 @@ var require_cst_scalar = __commonJS((exports) => {
         if (onError)
           onError(offset, code, message);
         else
-          throw new errors2.YAMLParseError([offset, offset + 1], code, message);
+          throw new errors.YAMLParseError([offset, offset + 1], code, message);
       };
       switch (token.type) {
         case "scalar":
@@ -6828,7 +6829,7 @@ var require_parser = __commonJS((exports) => {
 var require_public_api = __commonJS((exports) => {
   var composer = require_composer();
   var Document = require_Document();
-  var errors2 = require_errors();
+  var errors = require_errors();
   var log = require_log();
   var identity = require_identity();
   var lineCounter = require_line_counter();
@@ -6845,8 +6846,8 @@ var require_public_api = __commonJS((exports) => {
     const docs = Array.from(composer$1.compose(parser$1.parse(source)));
     if (prettyErrors && lineCounter2)
       for (const doc of docs) {
-        doc.errors.forEach(errors2.prettifyError(source, lineCounter2));
-        doc.warnings.forEach(errors2.prettifyError(source, lineCounter2));
+        doc.errors.forEach(errors.prettifyError(source, lineCounter2));
+        doc.warnings.forEach(errors.prettifyError(source, lineCounter2));
       }
     if (docs.length > 0)
       return docs;
@@ -6861,17 +6862,17 @@ var require_public_api = __commonJS((exports) => {
       if (!doc)
         doc = _doc;
       else if (doc.options.logLevel !== "silent") {
-        doc.errors.push(new errors2.YAMLParseError(_doc.range.slice(0, 2), "MULTIPLE_DOCS", "Source contains multiple documents; please use YAML.parseAllDocuments()"));
+        doc.errors.push(new errors.YAMLParseError(_doc.range.slice(0, 2), "MULTIPLE_DOCS", "Source contains multiple documents; please use YAML.parseAllDocuments()"));
         break;
       }
     }
     if (prettyErrors && lineCounter2) {
-      doc.errors.forEach(errors2.prettifyError(source, lineCounter2));
-      doc.warnings.forEach(errors2.prettifyError(source, lineCounter2));
+      doc.errors.forEach(errors.prettifyError(source, lineCounter2));
+      doc.warnings.forEach(errors.prettifyError(source, lineCounter2));
     }
     return doc;
   }
-  function parse2(src, reviver, options) {
+  function parse(src, reviver, options) {
     let _reviver = undefined;
     if (typeof reviver === "function") {
       _reviver = reviver;
@@ -6912,11 +6913,63 @@ var require_public_api = __commonJS((exports) => {
       return value.toString(options);
     return new Document.Document(value, _replacer, options).toString(options);
   }
-  exports.parse = parse2;
+  exports.parse = parse;
   exports.parseAllDocuments = parseAllDocuments;
   exports.parseDocument = parseDocument;
   exports.stringify = stringify;
 });
+
+// src/cli/index.ts
+import { writeFile as writeFile2 } from "node:fs/promises";
+
+// src/cli/compile.ts
+import { readFile } from "node:fs/promises";
+
+// node_modules/yaml/dist/index.js
+var composer = require_composer();
+var Document = require_Document();
+var Schema = require_Schema();
+var errors = require_errors();
+var Alias = require_Alias();
+var identity = require_identity();
+var Pair = require_Pair();
+var Scalar = require_Scalar();
+var YAMLMap = require_YAMLMap();
+var YAMLSeq = require_YAMLSeq();
+var cst = require_cst();
+var lexer = require_lexer();
+var lineCounter = require_line_counter();
+var parser = require_parser();
+var publicApi = require_public_api();
+var visit = require_visit();
+var $Composer = composer.Composer;
+var $Document = Document.Document;
+var $Schema = Schema.Schema;
+var $YAMLError = errors.YAMLError;
+var $YAMLParseError = errors.YAMLParseError;
+var $YAMLWarning = errors.YAMLWarning;
+var $Alias = Alias.Alias;
+var $isAlias = identity.isAlias;
+var $isCollection = identity.isCollection;
+var $isDocument = identity.isDocument;
+var $isMap = identity.isMap;
+var $isNode = identity.isNode;
+var $isPair = identity.isPair;
+var $isScalar = identity.isScalar;
+var $isSeq = identity.isSeq;
+var $Pair = Pair.Pair;
+var $Scalar = Scalar.Scalar;
+var $YAMLMap = YAMLMap.YAMLMap;
+var $YAMLSeq = YAMLSeq.YAMLSeq;
+var $Lexer = lexer.Lexer;
+var $LineCounter = lineCounter.LineCounter;
+var $Parser = parser.Parser;
+var $parse = publicApi.parse;
+var $parseAllDocuments = publicApi.parseAllDocuments;
+var $parseDocument = publicApi.parseDocument;
+var $stringify = publicApi.stringify;
+var $visit = visit.visit;
+var $visitAsync = visit.visitAsync;
 
 // node_modules/zod/v3/external.js
 var exports_external = {};
@@ -10930,54 +10983,6 @@ var WorkflowSchema = exports_external.object({
 function parse(raw) {
   return WorkflowSchema.parse(raw);
 }
-// src/cli/compile.ts
-import { readFile } from "node:fs/promises";
-
-// node_modules/yaml/dist/index.js
-var composer = require_composer();
-var Document = require_Document();
-var Schema = require_Schema();
-var errors2 = require_errors();
-var Alias = require_Alias();
-var identity = require_identity();
-var Pair = require_Pair();
-var Scalar = require_Scalar();
-var YAMLMap = require_YAMLMap();
-var YAMLSeq = require_YAMLSeq();
-var cst = require_cst();
-var lexer = require_lexer();
-var lineCounter = require_line_counter();
-var parser = require_parser();
-var publicApi = require_public_api();
-var visit = require_visit();
-var $Composer = composer.Composer;
-var $Document = Document.Document;
-var $Schema = Schema.Schema;
-var $YAMLError = errors2.YAMLError;
-var $YAMLParseError = errors2.YAMLParseError;
-var $YAMLWarning = errors2.YAMLWarning;
-var $Alias = Alias.Alias;
-var $isAlias = identity.isAlias;
-var $isCollection = identity.isCollection;
-var $isDocument = identity.isDocument;
-var $isMap = identity.isMap;
-var $isNode = identity.isNode;
-var $isPair = identity.isPair;
-var $isScalar = identity.isScalar;
-var $isSeq = identity.isSeq;
-var $Pair = Pair.Pair;
-var $Scalar = Scalar.Scalar;
-var $YAMLMap = YAMLMap.YAMLMap;
-var $YAMLSeq = YAMLSeq.YAMLSeq;
-var $Lexer = lexer.Lexer;
-var $LineCounter = lineCounter.LineCounter;
-var $Parser = parser.Parser;
-var $parse = publicApi.parse;
-var $parseAllDocuments = publicApi.parseAllDocuments;
-var $parseDocument = publicApi.parseDocument;
-var $stringify = publicApi.stringify;
-var $visit = visit.visit;
-var $visitAsync = visit.visitAsync;
 
 // src/cli/compile.ts
 async function compileFile(path) {
@@ -10991,9 +10996,95 @@ async function compileFile(path) {
     throw new Error(`Unsupported file extension ".${ext}": expected .yaml, .yml, or .json`);
   }
 }
-function transformYamlToWorkflow(doc) {
-  return parse(doc);
+
+// src/cli/viz.ts
+function buildAdjList(edges) {
+  const adj = new Map;
+  for (const edge of edges) {
+    if (!adj.has(edge.from))
+      adj.set(edge.from, []);
+    adj.get(edge.from).push(edge);
+  }
+  return adj;
 }
+function formatCondition(edge) {
+  const { field, operator, value } = edge.condition;
+  return `${field} ${operator} ${JSON.stringify(value)}`;
+}
+function formatConditionFalse(edge) {
+  const { field, operator, value } = edge.condition;
+  if (operator === "===" && typeof value === "boolean")
+    return `${field} === ${JSON.stringify(!value)}`;
+  if (operator === "!==" && typeof value === "boolean")
+    return `${field} !== ${JSON.stringify(!value)}`;
+  const negOp = { "===": "!==", "!==": "===", "<": ">=", ">": "<=", "<=": ">", ">=": "<" };
+  return `${field} ${negOp[operator] ?? `!(${operator})`} ${JSON.stringify(value)}`;
+}
+function dfs(nodeId, adj, ancestors, rendered, prefix, lines) {
+  ancestors.add(nodeId);
+  rendered.add(nodeId);
+  const outgoing = adj.get(nodeId) ?? [];
+  for (let i = 0;i < outgoing.length; i++) {
+    const edge = outgoing[i];
+    const isLast = i === outgoing.length - 1;
+    const connector = isLast ? "└──" : "├──";
+    const continuation = isLast ? "   " : "│  ";
+    if (edge.type === "standard") {
+      const target = edge.to;
+      let label = target;
+      if (ancestors.has(target)) {
+        label += " (loop)";
+        lines.push(`${prefix}${connector}> ${label}`);
+      } else if (rendered.has(target)) {
+        label += " (visited)";
+        lines.push(`${prefix}${connector}> ${label}`);
+      } else {
+        lines.push(`${prefix}${connector}> ${target}`);
+        dfs(target, adj, ancestors, rendered, prefix + continuation + "  ", lines);
+      }
+    } else {
+      const cond = edge;
+      const condStr = formatCondition(cond);
+      const retryStr = cond.maxRetries !== undefined ? `  (retry: ${cond.maxRetries}, exhausted: ${cond.onExhausted})` : "";
+      const branches = [
+        { label: `[${condStr}]`, target: cond.routes.true, extra: "" },
+        { label: `[${formatConditionFalse(cond)}]`, target: cond.routes.false, extra: retryStr }
+      ];
+      for (let b = 0;b < branches.length; b++) {
+        const { label, target, extra } = branches[b];
+        const bIsLast = isLast && b === branches.length - 1;
+        const bConnector = bIsLast ? "└──" : "├──";
+        const bContinuation = bIsLast ? "   " : "│  ";
+        let targetLabel = target + extra;
+        if (ancestors.has(target)) {
+          targetLabel = target + " (loop)" + extra;
+          lines.push(`${prefix}${bConnector}${label}──> ${targetLabel}`);
+        } else if (rendered.has(target)) {
+          targetLabel = target + " (visited)" + extra;
+          lines.push(`${prefix}${bConnector}${label}──> ${targetLabel}`);
+        } else {
+          lines.push(`${prefix}${bConnector}${label}──> ${target}${extra}`);
+          dfs(target, adj, ancestors, rendered, prefix + bContinuation + "  ", lines);
+        }
+      }
+    }
+  }
+  ancestors.delete(nodeId);
+}
+function renderViz(workflow) {
+  const adj = buildAdjList(workflow.edges);
+  const ancestors = new Set;
+  const rendered = new Set;
+  const lines = [];
+  lines.push(workflow.entry_point);
+  dfs(workflow.entry_point, adj, ancestors, rendered, "  ", lines);
+  return lines.join(`
+`);
+}
+
+// src/cli/simulate.ts
+import { readFile as readFile2 } from "node:fs/promises";
+
 // src/errors.ts
 class NodeNotFoundError extends Error {
   nodeId;
@@ -11239,107 +11330,620 @@ async function runWorkflow(workflow, initialState, options) {
   });
   return { ...result, trace };
 }
-async function resumeWorkflow(snapshot, options) {
-  const workflow = snapshot.workflowSnapshot;
-  const mergedState = { ...snapshot.state, ...options.state ?? {} };
-  const resolution = resolveNextNode(snapshot.suspendedAtNodeId, workflow.edges, mergedState, workflow.nodes);
-  const entryNodeId = resolution?.nextNodeId;
-  const trace = [];
-  const emit = (event) => {
-    trace.push(event);
-    options.onEvent?.(event);
-  };
-  emit({ type: "workflow_resume" });
-  if (entryNodeId === undefined) {
-    emit({ type: "workflow_complete", finalState: mergedState, durationMs: 0 });
-    return { status: "completed", state: mergedState, trace };
-  }
-  const runOptions = {
-    handlers: options.handlers,
-    registry: options.registry,
-    maxSteps: options.maxSteps,
-    signal: options.signal,
-    onEvent: options.onEvent
-  };
-  const result = await _execute(workflow, mergedState, runOptions, emit, entryNodeId);
-  return { ...result, trace };
+
+// src/cli/simulate.ts
+function loadMockData(content, path) {
+  const ext = path.split(".").pop()?.toLowerCase();
+  return ext === "json" ? JSON.parse(content) : $parse(content);
 }
-function runWorkflowStream(workflow, initialState, options) {
-  return {
-    [Symbol.asyncIterator]() {
-      const queue = [];
-      const pending = [];
-      let done = false;
-      let error;
-      _execute(workflow, initialState, options, (event) => {
-        if (pending.length > 0) {
-          pending.shift().resolve({ value: event, done: false });
-        } else {
-          queue.push(event);
-        }
-      }).then(() => {
-        done = true;
-        for (const { resolve } of pending.splice(0)) {
-          resolve({ value: undefined, done: true });
-        }
-      }, (err) => {
-        done = true;
-        error = err;
-        for (const { reject } of pending.splice(0)) {
-          reject(err);
-        }
-      });
-      return {
-        next() {
-          if (queue.length > 0) {
-            return Promise.resolve({ value: queue.shift(), done: false });
-          }
-          if (done) {
-            if (error !== undefined)
-              return Promise.reject(error);
-            return Promise.resolve({ value: undefined, done: true });
-          }
-          return new Promise((resolve, reject) => {
-            pending.push({ resolve, reject });
-          });
-        }
-      };
+function buildMockHandlers(mockData, workflow) {
+  const counts = {};
+  function makeHandler(nodeId) {
+    return async (_node, state) => {
+      counts[nodeId] = (counts[nodeId] ?? 0) + 1;
+      const count = counts[nodeId];
+      const key = count > 1 ? `${nodeId}.${count}` : nodeId;
+      const entry = mockData.handlers[key] ?? mockData.handlers[nodeId] ?? {};
+      return { ...state, ...entry };
+    };
+  }
+  const handlers = {};
+  for (const node of workflow.nodes) {
+    const h = makeHandler(node.id);
+    handlers[node.id] = h;
+    if (node.type !== node.id)
+      handlers[node.type] = h;
+  }
+  return handlers;
+}
+function filterState(state) {
+  const { __retries__: _, ...rest } = state;
+  return rest;
+}
+async function runSimulation(workflow, mockFilePath) {
+  const content = await readFile2(mockFilePath, "utf8");
+  const mockData = loadMockData(content, mockFilePath);
+  const handlers = buildMockHandlers(mockData, workflow);
+  console.log(`Simulating: ${workflow.graph_id}`);
+  console.log(`Mock data: ${mockFilePath}`);
+  console.log("");
+  let step = 0;
+  const nodeCounts = {};
+  const path = [];
+  const colW = 12;
+  function pad(s, w) {
+    return s.length >= w ? s : s + " ".repeat(w - s.length);
+  }
+  const events = [];
+  await runWorkflow(workflow, {}, {
+    handlers,
+    onEvent: (event) => {
+      events.push(event);
     }
-  };
+  });
+  for (let i = 0;i < events.length; i++) {
+    const event = events[i];
+    if (event.type === "node_complete") {
+      step++;
+      nodeCounts[event.nodeId] = (nodeCounts[event.nodeId] ?? 0) + 1;
+      const count = nodeCounts[event.nodeId];
+      const label = count > 1 ? `${event.nodeId} (x${count})` : event.nodeId;
+      path.push(event.nodeId);
+      const stateStr = JSON.stringify(filterState(event.state));
+      console.log(`Step ${step} │ ${pad(label, colW)} │ state: ${stateStr}`);
+    }
+    if (event.type === "edge_taken") {
+      const blank = " ".repeat(`Step ${step}`.length);
+      const nodeBlank = pad("", colW);
+      if (event.edgeType === "conditional") {
+        const edge = workflow.edges.find((e) => e.type === "conditional" && e.from === event.from.split("/").pop());
+        if (edge?.type === "conditional") {
+          const { field, operator, value } = edge.condition;
+          const result = event.conditionResult;
+          if (event.retriesExhausted) {
+            console.log(`${blank} │ ${nodeBlank} │ edge: ${field} ${operator} ${JSON.stringify(value)} → ${result}, retries exhausted → ${event.to}`);
+          } else {
+            const nextStep = events.slice(i + 1).find((e) => e.type === "node_complete");
+            const retryCount = nodeCounts[event.from.split("/").pop()] ?? 0;
+            const maxRetries = edge.maxRetries;
+            if (maxRetries !== undefined && !result) {
+              console.log(`${blank} │ ${nodeBlank} │ edge: ${field} ${operator} ${JSON.stringify(value)} → ${result}, retry ${retryCount}/${maxRetries} → ${event.to}`);
+            } else {
+              console.log(`${blank} │ ${nodeBlank} │ edge: ${field} ${operator} ${JSON.stringify(value)} → ${event.to}`);
+            }
+          }
+        }
+      } else {
+        const blank2 = " ".repeat(`Step ${step}`.length);
+        console.log(`${blank2} │ ${nodeBlank} │ edge: → ${event.to}`);
+      }
+    }
+  }
+  console.log("");
+  console.log(`✓ Completed in ${step} steps`);
+  console.log(`Path: ${path.join(" → ")}`);
 }
-// src/store.ts
-class MemorySessionStore {
-  store = new Map;
-  async get(sessionId) {
-    return this.store.get(sessionId);
-  }
-  async set(sessionId, snapshot) {
-    this.store.set(sessionId, snapshot);
-  }
-  async delete(sessionId) {
-    this.store.delete(sessionId);
-  }
+
+// src/cli/create.ts
+import * as readline from "readline";
+import { writeFile } from "node:fs/promises";
+var BASIC_YAML = `# ═══════════════════════════════════════════════════════════════════════════════
+# orinocoflow — basic workflow template
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# A simple linear pipeline: each step runs unconditionally after the previous.
+# Use this when your workflow has no branching logic.
+#
+# ─── Quick start ───────────────────────────────────────────────────────────────
+#
+#   oflow viz    <this-file>                   visualise the workflow as ASCII art
+#   oflow compile <this-file>                  validate and output compiled JSON
+#   oflow simulate <this-file> <mock-file>     dry-run with mock handler data
+#
+#   Create a mock data file:
+#   oflow create mock.yaml --from <this-file>
+#
+# ─── TypeScript usage ──────────────────────────────────────────────────────────
+#
+#   import { runWorkflow } from "orinocoflow";
+#   import { compileFile } from "orinocoflow/compile";
+#
+#   const workflow = await compileFile("this-file.yaml");
+#
+#   const result = await runWorkflow(workflow, {}, {
+#     handlers: {
+#       fetch:    async (node, state) => ({ ...state, data: await myFetch() }),
+#       process:  async (node, state) => ({ ...state, result: transform(state.data) }),
+#       complete: async (node, state) => { await save(state.result); return state; },
+#     },
+#   });
+#
+#   if (result.status === "completed") console.log(result.state);
+#
+# ─── Handler rules ─────────────────────────────────────────────────────────────
+#
+#   - Handlers are matched by node.type first, then node.id
+#   - Always return { ...state, ...newFields } — never mutate state directly
+#   - State accumulates: each step sees all fields set by previous steps
+#   - Extra node fields (e.g. url: "...") are accessible as node.fieldName
+#
+# ───────────────────────────────────────────────────────────────────────────────
+
+version: "1.0"
+graph_id: my-pipeline       # unique identifier for this workflow
+entry_point: fetch           # id of the first node to run
+
+nodes:
+  - id: fetch
+    type: fetch
+    # Extra fields here are passed to your handler as node.someField:
+    # url: "https://api.example.com/data"
+
+  - id: process
+    type: process
+
+  - id: complete
+    type: complete
+
+edges:
+  # Standard edges always route to the next node — no conditions.
+  - from: fetch
+    to: process
+    type: standard
+
+  - from: process
+    to: complete
+    type: standard
+`;
+var STANDARD_YAML = `# ═══════════════════════════════════════════════════════════════════════════════
+# orinocoflow — standard workflow template
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# A pipeline with conditional branching and automatic retry limits.
+# Use this when steps can succeed or fail and failures should be retried.
+#
+# ─── Quick start ───────────────────────────────────────────────────────────────
+#
+#   oflow viz    <this-file>                   visualise the workflow as ASCII art
+#   oflow compile <this-file>                  validate and output compiled JSON
+#   oflow simulate <this-file> <mock-file>     dry-run with mock handler data
+#
+#   Create a mock data file:
+#   oflow create mock.yaml --from <this-file>
+#
+# ─── TypeScript usage ──────────────────────────────────────────────────────────
+#
+#   import { runWorkflow } from "orinocoflow";
+#   import { compileFile } from "orinocoflow/compile";
+#
+#   const workflow = await compileFile("this-file.yaml");
+#
+#   const result = await runWorkflow(workflow, {}, {
+#     handlers: {
+#       fetch:    async (node, state) => ({ ...state, data: await myFetch() }),
+#       // validate must set state.is_valid = true or false
+#       validate: async (node, state) => ({ ...state, is_valid: await check(state.data) }),
+#       fix:      async (node, state) => ({ ...state, data: await repair(state.data) }),
+#       publish:  async (node, state) => { await publish(state.data); return state; },
+#       escalate: async (node, state) => { await alert(state); return state; },
+#     },
+#   });
+#
+#   if (result.status === "completed") console.log(result.state);
+#
+# ─── Conditional edges ─────────────────────────────────────────────────────────
+#
+#   A conditional edge reads state[field], applies the operator, and routes to
+#   either routes.true or routes.false.
+#
+#   Supported operators: === !== < > <= >= includes startsWith endsWith
+#
+# ─── Retry limits ──────────────────────────────────────────────────────────────
+#
+#   maxRetries: N     — allow the false route at most N times before escalating
+#   onExhausted: id   — node to route to once retries run out
+#
+#   Retry counts are tracked automatically in state.__retries__ (reserved key).
+#
+# ───────────────────────────────────────────────────────────────────────────────
+
+version: "1.0"
+graph_id: my-pipeline
+entry_point: fetch
+
+nodes:
+  - id: fetch
+    type: fetch
+
+  - id: validate
+    type: validate
+    # This handler must set state.is_valid = true | false
+
+  - id: fix
+    type: fix
+
+  - id: publish
+    type: publish
+    # Terminal node — no outgoing edge
+
+  - id: escalate
+    type: escalate
+    # Terminal node — reached when validation retries are exhausted
+
+edges:
+  - from: fetch
+    to: validate
+    type: standard
+
+  # Conditional edge: routes on state.is_valid after validate runs.
+  #
+  #   is_valid === true  → publish
+  #   is_valid === false → fix  (up to 3 times, then escalate)
+  - from: validate
+    type: conditional
+    condition:
+      field: is_valid           # key your handler sets in state
+      operator: "==="
+      value: true
+    routes:
+      "true": publish           # condition evaluated to true
+      "false": fix              # condition evaluated to false
+    maxRetries: 3               # allow false route at most 3 times
+    onExhausted: escalate       # go here when retries run out
+
+  - from: fix
+    to: validate
+    type: standard              # loops back to validate after each fix attempt
+`;
+function advancedMainYaml(subPath) {
+  return `# ═══════════════════════════════════════════════════════════════════════════════
+# orinocoflow — advanced workflow template (main)
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# A workflow that delegates part of its logic to a reusable sub-workflow.
+# Sub-workflows run inline, emit events prefixed with the parent node ID, and
+# merge their final state back into the parent workflow state.
+#
+# ─── Quick start ───────────────────────────────────────────────────────────────
+#
+#   oflow viz    <this-file>                   visualise the main workflow
+#   oflow viz    ${subPath}  visualise the sub-workflow
+#   oflow compile <this-file>                  validate the main workflow
+#
+# ─── TypeScript usage ──────────────────────────────────────────────────────────
+#
+#   import { runWorkflow } from "orinocoflow";
+#   import { compileFile } from "orinocoflow/compile";
+#
+#   const workflow    = await compileFile("this-file.yaml");
+#   const subWorkflow = await compileFile("${subPath}");
+#
+#   const result = await runWorkflow(workflow, {}, {
+#     handlers: {
+#       // Handlers for main workflow nodes:
+#       intake:   async (node, state) => ({ ...state, received: true }),
+#       finalise: async (node, state) => ({ ...state, done: true }),
+#
+#       // Handlers for sub-workflow nodes go here too (matched by type):
+#       check:     async (node, state) => ({ ...state, checked: true }),
+#       score:     async (node, state) => ({ ...state, score: 85 }),
+#       recommend: async (node, state) => ({ ...state, recommendation: "approve" }),
+#
+#       // sub_workflow nodes need no handler — the engine runs them automatically.
+#     },
+#     registry: {
+#       "review-pipeline": subWorkflow,   // key must match workflow_id below
+#     },
+#   });
+#
+# ─── Sub-workflow events ────────────────────────────────────────────────────────
+#
+#   Events from sub-workflow nodes are prefixed with the parent node ID:
+#     "deep-review/check", "deep-review/score", "deep-review/recommend"
+#
+#   The sub-workflow's final state merges into the parent state automatically.
+#
+# ───────────────────────────────────────────────────────────────────────────────
+
+version: "1.0"
+graph_id: my-pipeline
+entry_point: intake
+
+nodes:
+  - id: intake
+    type: intake
+
+  # sub_workflow node: runs review-pipeline inline when reached.
+  # Provide the compiled sub-workflow JSON in the registry option at runtime.
+  - id: deep-review
+    type: sub_workflow
+    workflow_id: review-pipeline    # must match a key in the registry option
+
+  - id: finalise
+    type: finalise
+
+edges:
+  - from: intake
+    to: deep-review
+    type: standard
+
+  - from: deep-review
+    to: finalise
+    type: standard
+`;
 }
-export {
-  transformYamlToWorkflow,
-  runWorkflowStream,
-  runWorkflow,
-  resumeWorkflow,
-  resolveNextNode,
-  parse,
-  evaluateOperator,
-  compileFile,
-  WorkflowSchema,
-  WorkflowNodeSchema,
-  WorkflowCycleError,
-  WorkflowConfigurationError,
-  WorkflowAbortedError,
-  SubWorkflowNotFoundError,
-  StandardEdgeSchema,
-  NodeNotFoundError,
-  MemorySessionStore,
-  InvalidEdgeError,
-  HandlerError,
-  EdgeSchema,
-  ConditionalEdgeSchema
+var ADVANCED_SUB_YAML = `# ═══════════════════════════════════════════════════════════════════════════════
+# orinocoflow — advanced workflow template (sub-workflow: review-pipeline)
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# This sub-workflow is referenced by the main workflow.
+# It runs when the deep-review node executes in the parent workflow.
+#
+# Register it at runtime:
+#   registry: { "review-pipeline": await compileFile("this-file.yaml") }
+#
+# ───────────────────────────────────────────────────────────────────────────────
+
+version: "1.0"
+graph_id: review-pipeline     # must match workflow_id in the parent workflow
+entry_point: check
+
+nodes:
+  - id: check
+    type: check
+
+  - id: score
+    type: score
+
+  - id: recommend
+    type: recommend
+
+edges:
+  - from: check
+    to: score
+    type: standard
+
+  - from: score
+    to: recommend
+    type: standard
+`;
+var MOCK_YAML = `# ═══════════════════════════════════════════════════════════════════════════════
+# orinocoflow — mock data template
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Used with: oflow simulate <workflow-file> <this-file>
+#
+# Each key under "handlers" is a node id. The value is data the simulator
+# merges into workflow state when that node runs.
+#
+# ─── Invocation suffixes ────────────────────────────────────────────────────────
+#
+#   node:    data returned on every call (default fallback)
+#   node.2:  data returned specifically on the 2nd call
+#   node.3:  data returned specifically on the 3rd call
+#
+#   Use .N keys to simulate retry scenarios where a node first fails then
+#   recovers on a later attempt:
+#
+#   validate:
+#     is_valid: false      # fails on first call
+#   validate.2:
+#     is_valid: true       # succeeds on second call (after one fix attempt)
+#
+# ─── Usage ─────────────────────────────────────────────────────────────────────
+#
+#   oflow simulate my-pipeline.yaml this-file.yaml
+#
+# ───────────────────────────────────────────────────────────────────────────────
+
+handlers:
+  # Replace these with your workflow's node ids. Set the fields your
+  # conditional edges depend on. Empty {} means the node returns no new state.
+  step_one: {}
+  step_two: {}
+  step_three: {}
+
+  # Retry example — uncomment and adapt for a node that loops:
+  # step_two:
+  #   result: false
+  # step_two.2:
+  #   result: true
+`;
+var TEMPLATES = {
+  basic: {
+    description: "Linear steps, no branching",
+    generate: (outputPath) => [{ path: outputPath, content: render(BASIC_YAML, outputPath) }]
+  },
+  standard: {
+    description: "Conditional logic and retry",
+    generate: (outputPath) => [{ path: outputPath, content: render(STANDARD_YAML, outputPath) }]
+  },
+  advanced: {
+    description: "Sub-workflows for modular composition",
+    generate: (outputPath) => {
+      const subPath = outputPath.replace(/(\.[^.]+)$/, "-review$1");
+      return [
+        { path: outputPath, content: render(advancedMainYaml(subPath), outputPath) },
+        { path: subPath, content: render(ADVANCED_SUB_YAML, subPath) }
+      ];
+    }
+  },
+  mock: {
+    description: "Mock data file for oflow simulate",
+    generate: (outputPath) => [{ path: outputPath, content: MOCK_YAML }]
+  }
 };
+function render(yamlContent, outputPath) {
+  const ext = outputPath.split(".").pop()?.toLowerCase();
+  if (ext === "json") {
+    return JSON.stringify($parse(yamlContent), null, 2);
+  }
+  return yamlContent;
+}
+async function promptTemplateChoice() {
+  const names = Object.keys(TEMPLATES).filter((n) => n !== "mock");
+  console.log("");
+  for (let i = 0;i < names.length; i++) {
+    const t = TEMPLATES[names[i]];
+    console.log(`  ${i + 1}  ${names[i].padEnd(12)}${t.description}`);
+  }
+  console.log("");
+  return new Promise((resolve, reject) => {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    rl.question(`Select template [1-${names.length}]: `, (answer) => {
+      rl.close();
+      const idx = parseInt(answer.trim(), 10) - 1;
+      if (idx >= 0 && idx < names.length) {
+        resolve(names[idx]);
+      } else {
+        reject(new Error(`Invalid selection "${answer.trim()}": enter a number 1–${names.length}`));
+      }
+    });
+  });
+}
+function printPostCreation(files, templateName, fromWorkflow) {
+  for (let i = 0;i < files.length; i++) {
+    const label = i === 0 ? `${templateName} template` : "sub-workflow";
+    console.log(`✓ Created ${files[i].path}  [${label}]`);
+  }
+  const workflowFile = files[0].path;
+  if (templateName === "mock" || fromWorkflow) {
+    const source = fromWorkflow ?? "your-pipeline.yaml";
+    console.log("");
+    console.log("Try this command:");
+    console.log(`  oflow simulate ${source} ${workflowFile}`);
+  } else {
+    console.log("");
+    console.log("Try these commands:");
+    console.log(`  ${"oflow viz " + workflowFile}`.padEnd(50) + "— visualise your workflow");
+    console.log(`  ${"oflow compile " + workflowFile}`.padEnd(50) + "— validate the schema");
+    console.log(`  ${"oflow simulate " + workflowFile + " <mock-file>"}`.padEnd(50) + "— dry-run with mock data");
+    console.log("");
+    console.log("To scaffold a matching mock file:");
+    console.log(`  oflow create mock.yaml --from ${workflowFile}`);
+  }
+}
+async function generateMockFromWorkflow(outputPath, workflowPath) {
+  const workflow = await compileFile(workflowPath);
+  const handlerNodes = workflow.nodes.filter((n) => n.type !== "interrupt" && n.type !== "sub_workflow");
+  const retrySourceIds = new Set(workflow.edges.filter((e) => e.type === "conditional" && e.maxRetries !== undefined).map((e) => e.from));
+  const ext = outputPath.split(".").pop()?.toLowerCase();
+  if (ext === "json") {
+    const handlers = {};
+    for (const node of handlerNodes) {
+      handlers[node.id] = {};
+    }
+    return { path: outputPath, content: JSON.stringify({ handlers }, null, 2) };
+  }
+  const lines = [
+    `# Generated mock data for: ${workflowPath}`,
+    `# Used with: oflow simulate ${workflowPath} ${outputPath}`,
+    `#`,
+    `# Fill in the fields your conditional edges depend on.`,
+    `# Use <id>.2, <id>.3 etc. to return different data on repeated invocations.`,
+    ``,
+    `handlers:`
+  ];
+  for (const node of handlerNodes) {
+    if (retrySourceIds.has(node.id)) {
+      const edge = workflow.edges.find((e) => e.type === "conditional" && e.from === node.id);
+      if (edge?.type === "conditional") {
+        const { field, operator, value } = edge.condition;
+        const failValue = operator === "===" && value === true ? false : operator === "===" && value === false ? true : `<failing-value>`;
+        lines.push(`  ${node.id}:`);
+        lines.push(`    ${field}: ${JSON.stringify(failValue)}   # fails → retry`);
+        lines.push(`  ${node.id}.2:`);
+        lines.push(`    ${field}: ${JSON.stringify(value)}   # succeeds on second call`);
+      } else {
+        lines.push(`  ${node.id}: {}  # called multiple times — add .2/.3 variants as needed`);
+      }
+    } else {
+      lines.push(`  ${node.id}: {}`);
+    }
+  }
+  return { path: outputPath, content: lines.join(`
+`) + `
+` };
+}
+async function runCreate(args) {
+  const outputPath = args[0];
+  if (!outputPath) {
+    throw new Error("Usage: oflow create <file> [--template <name>] [--from <workflow>]");
+  }
+  const templateFlag = args.indexOf("--template");
+  const fromFlag = args.indexOf("--from");
+  const templateName = templateFlag !== -1 ? args[templateFlag + 1] : null;
+  const fromWorkflow = fromFlag !== -1 ? args[fromFlag + 1] : null;
+  if (fromWorkflow) {
+    const file = await generateMockFromWorkflow(outputPath, fromWorkflow);
+    await writeFile(file.path, file.content, "utf8");
+    printPostCreation([file], "mock", fromWorkflow);
+    return;
+  }
+  let resolved = templateName;
+  if (!resolved) {
+    resolved = await promptTemplateChoice();
+  }
+  const spec = TEMPLATES[resolved];
+  if (!spec) {
+    throw new Error(`Unknown template "${resolved}". Available: ${Object.keys(TEMPLATES).join(", ")}`);
+  }
+  const files = spec.generate(outputPath);
+  for (const file of files) {
+    await writeFile(file.path, file.content, "utf8");
+  }
+  printPostCreation(files, resolved);
+}
+
+// src/cli/index.ts
+var args = process.argv.slice(2);
+var command = args[0];
+async function main() {
+  if (command === "compile") {
+    const inputFile = args[1];
+    if (!inputFile) {
+      console.error("Usage: oflow compile <file> [--output <file>]");
+      process.exit(1);
+    }
+    const outputFlag = args.indexOf("--output");
+    const outputFile = outputFlag !== -1 ? args[outputFlag + 1] : null;
+    const workflow = await compileFile(inputFile);
+    const json = JSON.stringify(workflow, null, 2);
+    if (outputFile) {
+      await writeFile2(outputFile, json, "utf8");
+    } else {
+      console.log(json);
+    }
+  } else if (command === "viz") {
+    const inputFile = args[1];
+    if (!inputFile) {
+      console.error("Usage: oflow viz <file>");
+      process.exit(1);
+    }
+    const workflow = await compileFile(inputFile);
+    console.log(renderViz(workflow));
+  } else if (command === "simulate") {
+    const workflowFile = args[1];
+    const mockFile = args[2];
+    if (!workflowFile || !mockFile) {
+      console.error("Usage: oflow simulate <workflow> <mock-file>");
+      process.exit(1);
+    }
+    const workflow = await compileFile(workflowFile);
+    await runSimulation(workflow, mockFile);
+  } else if (command === "create") {
+    await runCreate(args.slice(1));
+  } else {
+    console.error("Usage: oflow <compile|viz|simulate|create> [args...]");
+    console.error("  compile  <file> [--output <file>]");
+    console.error("  viz      <file>");
+    console.error("  simulate <workflow> <mock-file>");
+    console.error("  create   <file> [--template basic|standard|advanced|mock]");
+    console.error("  create   <mock-file> --from <workflow-file>");
+    process.exit(1);
+  }
+}
+main().catch((err) => {
+  console.error(err instanceof Error ? err.message : String(err));
+  process.exit(1);
+});

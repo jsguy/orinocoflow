@@ -6,24 +6,36 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "oflow": "./dist/cli/index.js"
+  },
+  "files": ["dist", "README.md"],
+  "engines": { "node": ">=18.0.0" },
   "exports": {
     ".": {
-      "bun":     "./src/index.ts",
-      "import":  "./dist/index.js",
+      "bun": "./src/index.ts",
+      "import": "./dist/index.js",
       "require": "./dist/index.cjs",
-      "types":   "./dist/index.d.ts"
+      "types": "./dist/index.d.ts"
+    },
+    "./compile": {
+      "bun": "./src/cli/compile.ts",
+      "import": "./dist/cli/compile.js",
+      "types": "./dist/cli/compile.d.ts"
     }
   },
   "scripts": {
     "test": "bun test",
     "typecheck": "tsc --noEmit",
-    "build": "bun build src/index.ts --outdir dist --target node --format esm && bun build src/index.ts --outdir dist --target node --format cjs --outfile index.cjs"
+    "build": "bun build src/index.ts --outdir dist --target node --format esm && bun build src/index.ts --target node --format cjs --outfile dist/index.cjs && bun build src/cli/index.ts --outdir dist/cli --target node --format esm && bun build src/cli/compile.ts --outdir dist/cli --target node --format esm && tsc --emitDeclarationOnly --noEmit false",
+    "prepublishOnly": "bun run build"
   },
   "devDependencies": {
     "typescript": "^5.4.0",
     "@types/bun": "latest"
   },
   "dependencies": {
+    "yaml": "^2.8.2",
     "zod": "^3.23.0"
   }
 }

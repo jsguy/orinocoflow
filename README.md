@@ -2,6 +2,18 @@
 
 Minimalist TypeScript workflow engine for AI pipelines. Define workflows as JSON, supply handlers, get streaming execution events.
 
+![Orinocoflow birdy](./src/orinocoflow-logo.png)
+
+## What do you get?
+
+- **Workflows as data** — JSON/YAML files you can diff, version, visualise, and hand to an LLM
+- **Versioned schema** — `version` field on every workflow; breaking changes are detectable at parse time, not at runtime
+- **No framework lock-in** — zero AI dependencies; handlers are plain async functions
+- **HITL without a database** — suspend to a JSON snapshot, store it wherever you want, resume later
+- **CLI tooling** — `oflow viz`, `oflow compile`, `oflow simulate` work without writing code
+- **Declarative routing** — conditional edges are data expressions, not hidden function logic
+- **Built-in retry escalation** — `maxRetries` + `onExhausted` on any conditional edge, tracked automatically
+
 ## Install
 
 **Requirements:** Node.js 18+ or Bun 1.0+. The examples and test scripts use Bun — install it from [bun.sh](https://bun.sh) if you want to run those.
@@ -44,9 +56,9 @@ if (result.status === "completed") {
 }
 ```
 
-## Run the example
+## Run the examples
 
-To run the included PR pipeline example:
+**PR pipeline (TypeScript):**
 
 ```sh
 bun install
@@ -55,6 +67,48 @@ bun run examples/pr_pipeline.ts 40
 
 This runs a simulated content publishing pipeline with stub handlers, printing each node execution and the full event trace to stdout.
 The parameter "40" sets the confidence score, make it > 80 to skip the HITL step.
+
+**oflow CLI (YAML/JSON workflow files):**
+
+```sh
+# Scaffold a new workflow from a template (basic / standard / advanced)
+bun src/cli/index.ts create my-pipeline.yaml
+
+# Skip the picker and specify a template directly
+bun src/cli/index.ts create my-pipeline.yaml --template standard
+
+# Generate a mock data file from an existing workflow
+bun src/cli/index.ts create mock.yaml --from my-pipeline.yaml
+
+# Validate a workflow file and print the compiled JSON
+bun src/cli/index.ts compile examples/odt-pipeline.yaml
+
+# Render an ASCII DAG of the workflow
+bun src/cli/index.ts viz examples/odt-pipeline.yaml
+
+# Dry-run with mock handler data, printing a step-by-step trace
+bun src/cli/index.ts simulate examples/odt-pipeline.yaml examples/mock.yaml
+```
+
+Once installed as a package with `bun add orinocoflow`, the binary is available as `oflow`:
+
+```sh
+# Create a workflow from a template (prompts to choose if --template omitted)
+oflow create my-pipeline.yaml
+oflow create my-pipeline.yaml --template basic     # linear steps, no branching
+oflow create my-pipeline.yaml --template standard  # conditional logic + retry
+oflow create my-pipeline.yaml --template advanced  # sub-workflows (creates 2 files)
+
+# Generate a mock data file matched to your workflow's nodes
+# For retry nodes, pre-fills the condition field with fail/succeed values
+oflow create mock.yaml --from my-pipeline.yaml
+
+oflow compile workflow.yaml
+oflow viz workflow.yaml
+oflow simulate workflow.yaml mock.yaml
+```
+
+All generated workflow files include inline comments explaining the schema, TypeScript handler pattern, and how to wire everything up — making them easy to hand to an AI coding assistant.
 
 ## Streaming
 
