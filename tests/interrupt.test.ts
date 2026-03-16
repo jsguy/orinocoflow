@@ -1,4 +1,4 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect } from "vitest";
 import { runWorkflow, resumeWorkflow } from "../src/execute.js";
 import { parse } from "../src/schemas.js";
 import { WorkflowConfigurationError } from "../src/errors.js";

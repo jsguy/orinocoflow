@@ -1,0 +1,24 @@
+version: "1.0"
+graph_id: hn_roast
+entry_point: fetch_story
+
+nodes:
+  - id: fetch_story
+    type: fetch
+  - id: draft_roast
+    type: llm
+  - id: wait_for_approval
+    type: interrupt
+  - id: publish
+    type: output
+
+edges:
+  - from: fetch_story
+    to: draft_roast
+    type: standard
+  - from: draft_roast
+    to: wait_for_approval
+    type: standard
+  - from: wait_for_approval
+    to: publish
+    type: standard

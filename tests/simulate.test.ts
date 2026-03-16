@@ -1,4 +1,4 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect } from "vitest";
 import { buildMockHandlers } from "../src/cli/simulate.js";
 import { runWorkflow } from "../src/execute.js";
 import type { Workflow } from "../src/schemas.js";

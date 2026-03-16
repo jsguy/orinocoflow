@@ -1,48 +1,71 @@
 #!/usr/bin/env node
+"use strict";
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
 
 // src/cli/index.ts
-import { writeFile as writeFile2 } from "fs/promises";
+var import_promises4 = require("fs/promises");
 
 // src/cli/compile.ts
-import { readFile } from "fs/promises";
-import { parse as yamlParse } from "yaml";
+var import_promises = require("fs/promises");
+var import_yaml = require("yaml");
 
 // src/schemas.ts
-import { z } from "zod";
-var WorkflowNodeSchema = z.object({
-  id: z.string(),
-  type: z.string()
+var import_zod = require("zod");
+var WorkflowNodeSchema = import_zod.z.object({
+  id: import_zod.z.string(),
+  type: import_zod.z.string()
 }).passthrough();
-var StandardEdgeSchema = z.object({
-  from: z.string(),
-  to: z.string(),
-  type: z.literal("standard")
+var StandardEdgeSchema = import_zod.z.object({
+  from: import_zod.z.string(),
+  to: import_zod.z.string(),
+  type: import_zod.z.literal("standard")
 });
-var ConditionalEdgeSchema = z.object({
-  from: z.string(),
-  type: z.literal("conditional"),
-  condition: z.object({
-    field: z.string(),
-    operator: z.string(),
-    value: z.unknown()
+var ConditionalEdgeSchema = import_zod.z.object({
+  from: import_zod.z.string(),
+  type: import_zod.z.literal("conditional"),
+  condition: import_zod.z.object({
+    field: import_zod.z.string(),
+    operator: import_zod.z.string(),
+    value: import_zod.z.unknown()
   }),
-  routes: z.object({
-    true: z.string(),
-    false: z.string()
+  routes: import_zod.z.object({
+    true: import_zod.z.string(),
+    false: import_zod.z.string()
   }),
-  maxRetries: z.number().int().nonnegative().optional(),
-  onExhausted: z.string().optional()
+  maxRetries: import_zod.z.number().int().nonnegative().optional(),
+  onExhausted: import_zod.z.string().optional()
 });
-var EdgeSchema = z.discriminatedUnion("type", [
+var EdgeSchema = import_zod.z.discriminatedUnion("type", [
   StandardEdgeSchema,
   ConditionalEdgeSchema
 ]);
-var WorkflowSchema = z.object({
-  version: z.literal("1.0"),
-  graph_id: z.string(),
-  entry_point: z.string(),
-  nodes: z.array(WorkflowNodeSchema),
-  edges: z.array(EdgeSchema)
+var WorkflowSchema = import_zod.z.object({
+  version: import_zod.z.literal("1.0"),
+  graph_id: import_zod.z.string(),
+  entry_point: import_zod.z.string(),
+  nodes: import_zod.z.array(WorkflowNodeSchema),
+  edges: import_zod.z.array(EdgeSchema)
 });
 function parse(raw) {
   return WorkflowSchema.parse(raw);
@@ -50,10 +73,10 @@ function parse(raw) {
 
 // src/cli/compile.ts
 async function compileFile(path) {
-  const content = await readFile(path, "utf8");
+  const content = await (0, import_promises.readFile)(path, "utf8");
   const ext = path.split(".").pop()?.toLowerCase();
   if (ext === "yaml" || ext === "yml") {
-    return parse(yamlParse(content));
+    return parse((0, import_yaml.parse)(content));
   } else if (ext === "json") {
     return parse(JSON.parse(content));
   } else {
@@ -143,8 +166,8 @@ function renderViz(workflow) {
 }
 
 // src/cli/simulate.ts
-import { readFile as readFile2 } from "fs/promises";
-import { parse as yamlParse2 } from "yaml";
+var import_promises2 = require("fs/promises");
+var import_yaml2 = require("yaml");
 
 // src/errors.ts
 var NodeNotFoundError = class extends Error {
@@ -402,7 +425,7 @@ async function runWorkflow(workflow, initialState, options) {
 // src/cli/simulate.ts
 function loadMockData(content, path) {
   const ext = path.split(".").pop()?.toLowerCase();
-  return ext === "json" ? JSON.parse(content) : yamlParse2(content);
+  return ext === "json" ? JSON.parse(content) : (0, import_yaml2.parse)(content);
 }
 function buildMockHandlers(mockData, workflow) {
   const counts = {};
@@ -428,7 +451,7 @@ function filterState(state) {
   return rest;
 }
 async function runSimulation(workflow, mockFilePath) {
-  const content = await readFile2(mockFilePath, "utf8");
+  const content = await (0, import_promises2.readFile)(mockFilePath, "utf8");
   const mockData = loadMockData(content, mockFilePath);
   const handlers = buildMockHandlers(mockData, workflow);
   console.log(`Simulating: ${workflow.graph_id}`);
@@ -494,9 +517,9 @@ async function runSimulation(workflow, mockFilePath) {
 }
 
 // src/cli/create.ts
-import * as readline from "readline";
-import { writeFile } from "fs/promises";
-import { parse as yamlParse3 } from "yaml";
+var readline = __toESM(require("readline"), 1);
+var import_promises3 = require("fs/promises");
+var import_yaml3 = require("yaml");
 var BASIC_YAML = `# \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
 # orinocoflow \u2014 basic workflow template
 # \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
@@ -846,7 +869,7 @@ var TEMPLATES = {
 function render(yamlContent, outputPath) {
   const ext = outputPath.split(".").pop()?.toLowerCase();
   if (ext === "json") {
-    return JSON.stringify(yamlParse3(yamlContent), null, 2);
+    return JSON.stringify((0, import_yaml3.parse)(yamlContent), null, 2);
   }
   return yamlContent;
 }
@@ -950,7 +973,7 @@ async function runCreate(args2) {
   const fromWorkflow = fromFlag !== -1 ? args2[fromFlag + 1] : null;
   if (fromWorkflow) {
     const file = await generateMockFromWorkflow(outputPath, fromWorkflow);
-    await writeFile(file.path, file.content, "utf8");
+    await (0, import_promises3.writeFile)(file.path, file.content, "utf8");
     printPostCreation([file], "mock", fromWorkflow);
     return;
   }
@@ -966,7 +989,7 @@ async function runCreate(args2) {
   }
   const files = spec.generate(outputPath);
   for (const file of files) {
-    await writeFile(file.path, file.content, "utf8");
+    await (0, import_promises3.writeFile)(file.path, file.content, "utf8");
   }
   printPostCreation(files, resolved);
 }
@@ -986,7 +1009,7 @@ async function main() {
     const workflow = await compileFile(inputFile);
     const json = JSON.stringify(workflow, null, 2);
     if (outputFile) {
-      await writeFile2(outputFile, json, "utf8");
+      await (0, import_promises4.writeFile)(outputFile, json, "utf8");
     } else {
       console.log(json);
     }

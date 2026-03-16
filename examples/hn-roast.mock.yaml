@@ -1,0 +1,22 @@
+# Mock handler data for oflow simulate
+# Run: oflow simulate examples/hn-roast.yaml examples/hn-roast.mock.yaml
+# No API keys needed — all responses are static.
+#
+# Note: wait_for_approval is an interrupt node; the workflow suspends there.
+# The simulation shows the fetch → draft path and the HITL gate.
+
+handlers:
+  fetch_story:
+    story_title: "I accidentally put a memory leak in production and it fixed our latency"
+    story_url: "https://news.ycombinator.com/item?id=999999"
+    comments:
+      - "This is peak engineering. Sometimes the bug IS the feature."
+      - "GC pressure was causing stop-the-world pauses anyway. The leak ate the heap slowly enough to keep the GC quiet."
+      - "We did something similar — left a cache with no eviction policy and suddenly p99 dropped 40ms."
+      - "The real memory leak was the friends we made along the way."
+      - "Ship it. Document it as 'managed memory retention strategy'."
+
+  draft_roast:
+    roast: "Nothing ships faster than a bug that accidentally becomes a feature — this is just DevOps with extra steps and a very confident post-mortem."
+
+  publish: {}

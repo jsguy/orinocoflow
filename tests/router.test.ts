@@ -1,4 +1,4 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect } from "vitest";
 import { evaluateOperator, resolveNextNode } from "../src/router.js";
 import type { Edge } from "../src/schemas.js";
 

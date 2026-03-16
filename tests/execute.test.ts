@@ -1,4 +1,4 @@
-import { describe, it, expect, mock } from "bun:test";
+import { describe, it, expect, vi } from "vitest";
 import { runWorkflow, runWorkflowStream } from "../src/execute.js";
 import { parse } from "../src/schemas.js";
 import { WorkflowCycleError, WorkflowAbortedError } from "../src/errors.js";
@@ -176,8 +176,8 @@ describe("handler resolution", () => {
     });
 
   it("type handler takes priority when both type and id are registered", async () => {
-    const typeCalled = mock(() => ({}));
-    const idCalled = mock(() => ({}));
+    const typeCalled = vi.fn(() => ({}));
+    const idCalled = vi.fn(() => ({}));
     const workflow = makeVerifyWorkflow();
     await runWorkflow(workflow, {}, { handlers: { verify: typeCalled, "my-verify": idCalled } });
     expect(typeCalled).toHaveBeenCalledTimes(1);
@@ -185,7 +185,7 @@ describe("handler resolution", () => {
   });
 
   it("id handler used as fallback when type is not registered", async () => {
-    const idCalled = mock(() => ({}));
+    const idCalled = vi.fn(() => ({}));
     const workflow = makeVerifyWorkflow();
     await expect(
       runWorkflow(workflow, {}, { handlers: { "my-verify": idCalled } })

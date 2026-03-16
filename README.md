@@ -16,12 +16,10 @@ Minimalist TypeScript workflow engine for AI pipelines. Define workflows as JSON
 
 ## Install
 
-**Requirements:** Node.js 18+ or Bun 1.0+. The examples and test scripts use Bun — install it from [bun.sh](https://bun.sh) if you want to run those.
+**Requirements:** Node.js 18+.
 
 ```sh
 npm install orinocoflow
-# or
-bun add orinocoflow
 ```
 
 ## Quick start
@@ -58,11 +56,41 @@ if (result.status === "completed") {
 
 ## Run the examples
 
+**HN Roast — Human-in-the-loop demo (TypeScript):**
+
+Fetches today's #1 Hacker News story, calls Claude to write a spicy hot take, then **suspends** and waits for you to approve before doing anything with it. Demonstrates orinocoflow's suspend/resume mechanic with real API calls.
+
+```sh
+npm install
+```
+
+No API keys? Run it in simulation mode (uses static mock data, zero network calls):
+
+```sh
+npx tsx src/cli/index.ts simulate examples/hn-roast.yaml examples/hn-roast.mock.yaml
+```
+
+With a real Claude API key:
+
+```sh
+export ANTHROPIC_API_KEY=sk-ant-...
+
+# Step 1: fetch the story, generate the draft, then suspend
+npx tsx examples/hn-roast.ts
+
+# Step 2: read the draft, then approve and publish
+npx tsx examples/hn-roast.ts --resume /tmp/hn-roast-snap.json
+```
+
+The workflow pauses at the `interrupt` node and serialises its state to `/tmp/hn-roast-snap.json`. Nothing is published until you explicitly resume — that's the whole point.
+
+---
+
 **PR pipeline (TypeScript):**
 
 ```sh
-bun install
-bun run examples/pr_pipeline.ts 40
+npm install
+npx tsx examples/pr_pipeline.ts 40
 ```
 
 This runs a simulated content publishing pipeline with stub handlers, printing each node execution and the full event trace to stdout.
@@ -72,25 +100,25 @@ The parameter "40" sets the confidence score, make it > 80 to skip the HITL step
 
 ```sh
 # Scaffold a new workflow from a template (basic / standard / advanced)
-bun src/cli/index.ts create my-pipeline.yaml
+npx tsx src/cli/index.ts create my-pipeline.yaml
 
 # Skip the picker and specify a template directly
-bun src/cli/index.ts create my-pipeline.yaml --template standard
+npx tsx src/cli/index.ts create my-pipeline.yaml --template standard
 
 # Generate a mock data file from an existing workflow
-bun src/cli/index.ts create mock.yaml --from my-pipeline.yaml
+npx tsx src/cli/index.ts create mock.yaml --from my-pipeline.yaml
 
 # Validate a workflow file and print the compiled JSON
-bun src/cli/index.ts compile examples/odt-pipeline.yaml
+npx tsx src/cli/index.ts compile examples/odt-pipeline.yaml
 
 # Render an ASCII DAG of the workflow
-bun src/cli/index.ts viz examples/odt-pipeline.yaml
+npx tsx src/cli/index.ts viz examples/odt-pipeline.yaml
 
 # Dry-run with mock handler data, printing a step-by-step trace
-bun src/cli/index.ts simulate examples/odt-pipeline.yaml examples/mock.yaml
+npx tsx src/cli/index.ts simulate examples/odt-pipeline.yaml examples/mock.yaml
 ```
 
-Once installed as a package with `bun add orinocoflow`, the binary is available as `oflow`:
+Once installed as a package with `npm install orinocoflow`, the binary is available as `oflow`:
 
 ```sh
 # Create a workflow from a template (prompts to choose if --template omitted)

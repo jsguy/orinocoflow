@@ -1,4 +1,4 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect } from "vitest";
 import { MemorySessionStore } from "../src/store.js";
 import type { SuspendedExecution } from "../src/schemas.js";
 import { parse } from "../src/schemas.js";

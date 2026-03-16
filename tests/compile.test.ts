@@ -1,4 +1,5 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect } from "vitest";
+import { writeFile, readFile } from "node:fs/promises";
 import { compileFile, transformYamlToWorkflow } from "../src/cli/compile.js";
 import { ZodError } from "zod";
 
@@ -28,24 +29,24 @@ describe("compileFile", () => {
   });
 
   it("throws ZodError for invalid schema", async () => {
-    await Bun.write("/tmp/bad-schema.yaml", 'version: "1.0"\ngraph_id: test\n');
+    await writeFile("/tmp/bad-schema.yaml", 'version: "1.0"\ngraph_id: test\n');
     await expect(compileFile("/tmp/bad-schema.yaml")).rejects.toBeInstanceOf(ZodError);
   });
 
   it("throws on malformed YAML syntax", async () => {
-    await Bun.write("/tmp/bad-syntax.yaml", "version: [\nbroken");
+    await writeFile("/tmp/bad-syntax.yaml", "version: [\nbroken");
     await expect(compileFile("/tmp/bad-syntax.yaml")).rejects.toThrow();
   });
 
   it("throws on unsupported file extension", async () => {
-    await Bun.write("/tmp/workflow.toml", "");
+    await writeFile("/tmp/workflow.toml", "");
     await expect(compileFile("/tmp/workflow.toml")).rejects.toThrow(/Unsupported file extension/);
   });
 });
 
 describe("transformYamlToWorkflow", () => {
   it("validates a valid workflow object", async () => {
-    const raw = await Bun.file(JSON_PATH).json();
+    const raw = JSON.parse(await readFile(JSON_PATH, "utf8"));
     const workflow = transformYamlToWorkflow(raw);
     expect(workflow.graph_id).toBe("odt-pipeline");
   });

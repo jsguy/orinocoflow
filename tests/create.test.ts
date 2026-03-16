@@ -1,4 +1,5 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect } from "vitest";
+import { writeFile, readFile } from "node:fs/promises";
 import { runCreate } from "../src/cli/create.js";
 import { compileFile } from "../src/cli/compile.js";
 import { parse as yamlParse } from "yaml";
@@ -45,7 +46,7 @@ describe("oflow create — workflow templates", () => {
   it("creates a JSON template (no comments, valid JSON)", async () => {
     const path = "/tmp/create-test-basic.json";
     await create([path, "--template", "basic"]);
-    const raw = await Bun.file(path).text();
+    const raw = await readFile(path, "utf8");
     // Must be valid JSON
     const parsed = JSON.parse(raw);
     expect(parsed.version).toBe("1.0");
@@ -56,7 +57,7 @@ describe("oflow create — workflow templates", () => {
   it("creates a standalone mock template", async () => {
     const path = "/tmp/create-test-mock.yaml";
     await create([path, "--template", "mock"]);
-    const content = await Bun.file(path).text();
+    const content = await readFile(path, "utf8");
     expect(content).toContain("handlers:");
     expect(content).toContain(".2");
   });
@@ -72,7 +73,7 @@ describe("oflow create --from (mock generation)", () => {
   it("generates stubs for every handler node", async () => {
     const path = "/tmp/create-from-basic.yaml";
     await create([path, "--from", "examples/odt-pipeline.yaml"]);
-    const content = await Bun.file(path).text();
+    const content = await readFile(path, "utf8");
     const parsed = yamlParse(content) as { handlers: Record<string, unknown> };
     // All 8 nodes should appear (interrupt/sub_workflow are filtered — none here)
     expect(Object.keys(parsed.handlers)).toContain("provision");
@@ -84,7 +85,7 @@ describe("oflow create --from (mock generation)", () => {
   it("pre-fills retry node with field name and fail/succeed values", async () => {
     const path = "/tmp/create-from-retry.yaml";
     await create([path, "--from", "examples/odt-pipeline.yaml"]);
-    const content = await Bun.file(path).text();
+    const content = await readFile(path, "utf8");
     // verify is a retry source — should have .2 variant with correct field
     expect(content).toContain("verify:");
     expect(content).toContain("verify_passed: false");
@@ -95,7 +96,7 @@ describe("oflow create --from (mock generation)", () => {
   it("generates valid JSON mock from --from", async () => {
     const path = "/tmp/create-from.json";
     await create([path, "--from", "examples/odt-pipeline.yaml"]);
-    const raw = await Bun.file(path).text();
+    const raw = await readFile(path, "utf8");
     const parsed = JSON.parse(raw);
     expect(parsed.handlers).toBeDefined();
     expect(Object.keys(parsed.handlers).length).toBeGreaterThan(0);
@@ -120,10 +121,10 @@ describe("oflow create --from (mock generation)", () => {
       ],
     };
     const wfPath = "/tmp/filter-test.json";
-    await Bun.write(wfPath, JSON.stringify(wf));
+    await writeFile(wfPath, JSON.stringify(wf));
     const mockPath = "/tmp/filter-test-mock.yaml";
     await create([mockPath, "--from", wfPath]);
-    const content = await Bun.file(mockPath).text();
+    const content = await readFile(mockPath, "utf8");
     // a and b should be there, interrupt and sub_workflow should not
     expect(content).toContain("  a:");
     expect(content).toContain("  b:");
