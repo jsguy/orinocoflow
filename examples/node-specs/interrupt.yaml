@@ -1,0 +1,6 @@
+node_type: interrupt
+description: Suspends workflow execution and yields a snapshot for human review. Resumes when resumeWorkflow() is called with the snapshot.
+inputs:
+  - name: roast
+    type: string
+    description: The draft roast awaiting human approval

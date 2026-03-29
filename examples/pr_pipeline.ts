@@ -4,7 +4,7 @@ import type { WorkflowNode, WorkflowState } from "../src/index.js";
 // ─── Workflow JSON ────────────────────────────────────────────────────────────
 
 const PR_PIPELINE = {
-  version: "1.0",
+  orinocoflow_version: "1.0",
   graph_id: "pr_pipeline_01",
   entry_point: "read_email",
   nodes: [
@@ -30,7 +30,7 @@ const PR_PIPELINE = {
 };
 
 const REVIEW_CONTEXT = {
-  version: "1.0",
+  orinocoflow_version: "1.0",
   graph_id: "review_context_01",
   entry_point: "editorial_check",
   nodes: [

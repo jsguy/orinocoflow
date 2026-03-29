@@ -13,6 +13,7 @@ Minimalist TypeScript workflow engine for AI pipelines. Define workflows as JSON
 - **CLI tooling** — `oflow viz`, `oflow compile`, `oflow simulate` work without writing code
 - **Declarative routing** — conditional edges are data expressions, not hidden function logic
 - **Built-in retry escalation** — `maxRetries` + `onExhausted` on any conditional edge, tracked automatically
+- **Node specs** — optional YAML/JSON files that describe what each node type expects and produces; useful for documentation, test scaffolding, and LLM-assisted workflow authoring
 
 ## Install
 
@@ -219,11 +220,65 @@ Built-in node type: `"sub_workflow"` — requires a `workflow_id` field pointing
 
 Supported operators: `<` `>` `<=` `>=` `===` `!==` `includes` `startsWith` `endsWith`
 
+### Node spec (optional)
+
+A node spec describes the contract for a node type — what config it accepts, what state fields it reads, and what it writes. Specs are purely documentary; the runtime does not enforce them.
+
+```yaml
+node_type: fetch
+description: Fetches the top HN story and its top comments
+outputs:
+  - name: story_title
+    type: string
+    description: Title of the top HN story
+  - name: comments
+    type: array
+    description: Up to 5 top comments as plain strings
+```
+
+```yaml
+node_type: llm
+description: Drafts a roast of the story using Claude
+config:
+  model:
+    type: string
+    required: false
+    description: Model override (defaults to claude-haiku)
+inputs:
+  - name: story_title
+    type: string
+    required: true
+  - name: comments
+    type: array
+    required: true
+outputs:
+  - name: roast
+    type: string
+    description: Short punchy hot take
+```
+
+Parse and validate a spec with `parseNodeSpec`:
+
+```ts
+import { parseNodeSpec } from "orinocoflow";
+import { parse as yamlParse } from "yaml";
+import { readFileSync } from "node:fs";
+
+const spec = parseNodeSpec(yamlParse(readFileSync("node-specs/llm.yaml", "utf8")));
+console.log(spec.node_type);   // "llm"
+console.log(spec.outputs);     // [{ name: "roast", type: "string", ... }]
+```
+
+See `examples/node-specs/` for complete examples covering the `fetch`, `llm`, `interrupt`, and `output` node types from the HN Roast workflow.
+
 ## API
 
 ```ts
-// Parse raw JSON into a typed Workflow
+// Parse raw JSON/YAML into a typed Workflow
 parse(raw: unknown): Workflow
+
+// Parse raw JSON/YAML into a typed NodeSpec
+parseNodeSpec(raw: unknown): NodeSpec
 
 // Run workflow — returns WorkflowResult (completed or suspended)
 runWorkflow(workflow, initialState, options): Promise<WorkflowResult>

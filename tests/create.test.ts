@@ -13,7 +13,7 @@ describe("oflow create — workflow templates", () => {
     const path = "/tmp/create-test-basic.yaml";
     await create([path, "--template", "basic"]);
     const workflow = await compileFile(path);
-    expect(workflow.version).toBe("1.0");
+    expect(workflow.orinocoflow_version).toBe("1.0");
     expect(workflow.nodes.length).toBeGreaterThan(0);
     expect(workflow.edges.every((e) => e.type === "standard")).toBe(true);
   });
@@ -49,7 +49,7 @@ describe("oflow create — workflow templates", () => {
     const raw = await readFile(path, "utf8");
     // Must be valid JSON
     const parsed = JSON.parse(raw);
-    expect(parsed.version).toBe("1.0");
+    expect(parsed.orinocoflow_version).toBe("1.0");
     // Must not contain comment characters
     expect(raw).not.toContain("# ");
   });
@@ -105,7 +105,7 @@ describe("oflow create --from (mock generation)", () => {
   it("filters out interrupt and sub_workflow nodes", async () => {
     // Create a workflow with interrupt + sub_workflow nodes to test filtering
     const wf = {
-      version: "1.0",
+      orinocoflow_version: "1.0",
       graph_id: "filter-test",
       entry_point: "a",
       nodes: [

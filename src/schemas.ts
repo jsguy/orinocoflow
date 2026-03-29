@@ -45,7 +45,7 @@ export type Edge = z.infer<typeof EdgeSchema>;
 // ─── Workflow schema ──────────────────────────────────────────────────────────
 
 export const WorkflowSchema = z.object({
-  version: z.literal("1.0"),
+  orinocoflow_version: z.string().optional(),
   graph_id: z.string(),
   entry_point: z.string(),
   nodes: z.array(WorkflowNodeSchema),
@@ -56,6 +56,38 @@ export type Workflow = z.infer<typeof WorkflowSchema>;
 
 export function parse(raw: unknown): Workflow {
   return WorkflowSchema.parse(raw);
+}
+
+// ─── NodeSpec schema ──────────────────────────────────────────────────────────
+
+const NodeSpecFieldSchema = z.object({
+  type: z.string().optional(),
+  required: z.boolean().optional(),
+  description: z.string().optional(),
+});
+
+const NodeSpecIOSchema = z.object({
+  name: z.string(),
+  type: z.string().optional(),
+  description: z.string().optional(),
+});
+
+const NodeSpecInputSchema = NodeSpecIOSchema.extend({
+  required: z.boolean().optional(),
+});
+
+export const NodeSpecSchema = z.object({
+  node_type: z.string(),
+  description: z.string().optional(),
+  config: z.record(NodeSpecFieldSchema).optional(),
+  inputs: z.array(NodeSpecInputSchema).optional(),
+  outputs: z.array(NodeSpecIOSchema).optional(),
+});
+
+export type NodeSpec = z.infer<typeof NodeSpecSchema>;
+
+export function parseNodeSpec(raw: unknown): NodeSpec {
+  return NodeSpecSchema.parse(raw);
 }
 
 // ─── WorkflowState ───────────────────────────────────────────────────────────

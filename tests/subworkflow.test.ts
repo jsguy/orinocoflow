@@ -5,7 +5,7 @@ import { SubWorkflowNotFoundError } from "../src/errors.js";
 import type { WorkflowNode, WorkflowState } from "../src/schemas.js";
 
 const SUB_WORKFLOW_JSON = {
-  version: "1.0",
+  orinocoflow_version: "1.0",
   graph_id: "sub_01",
   entry_point: "sub_step",
   nodes: [{ id: "sub_step", type: "task" }],
@@ -13,7 +13,7 @@ const SUB_WORKFLOW_JSON = {
 };
 
 const MAIN_WORKFLOW_JSON = {
-  version: "1.0",
+  orinocoflow_version: "1.0",
   graph_id: "main_01",
   entry_point: "entry",
   nodes: [
@@ -90,7 +90,7 @@ describe("sub_workflow nodes", () => {
 
 describe("sub_workflow suspension propagation", () => {
   const CHILD_WITH_INTERRUPT = {
-    version: "1.0",
+    orinocoflow_version: "1.0",
     graph_id: "child_suspend",
     entry_point: "child_task",
     nodes: [
@@ -101,7 +101,7 @@ describe("sub_workflow suspension propagation", () => {
   };
 
   const PARENT_WITH_SUB = {
-    version: "1.0",
+    orinocoflow_version: "1.0",
     graph_id: "parent_suspend",
     entry_point: "setup",
     nodes: [

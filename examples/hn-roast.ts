@@ -7,7 +7,7 @@ import type { WorkflowNode, WorkflowState } from "../src/index.js";
 // ─── Workflow graph ───────────────────────────────────────────────────────────
 
 export const HN_ROAST_WORKFLOW = {
-  version: "1.0",
+  orinocoflow_version: "1.0",
   graph_id: "hn_roast",
   entry_point: "fetch_story",
   nodes: [

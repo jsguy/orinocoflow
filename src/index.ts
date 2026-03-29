@@ -1,4 +1,4 @@
-export { parse } from "./schemas.js";
+export { parse, parseNodeSpec } from "./schemas.js";
 export { runWorkflowStream, runWorkflow, resumeWorkflow } from "./execute.js";
 export type { RunOptions, ResumeOptions } from "./execute.js";
 export { evaluateOperator, resolveNextNode } from "./router.js";
@@ -12,6 +12,7 @@ export {
   WorkflowConfigurationError,
 } from "./errors.js";
 export type {
+  NodeSpec,
   Workflow,
   WorkflowNode,
   WorkflowState,
@@ -23,6 +24,7 @@ export type {
   WorkflowResult,
 } from "./schemas.js";
 export {
+  NodeSpecSchema,
   WorkflowSchema,
   EdgeSchema,
   StandardEdgeSchema,

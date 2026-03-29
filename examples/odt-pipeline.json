@@ -1,5 +1,5 @@
 {
-  "version": "1.0",
+  "orinocoflow_version": "1.0",
   "graph_id": "odt-pipeline",
   "entry_point": "provision",
   "nodes": [

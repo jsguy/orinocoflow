@@ -4,7 +4,7 @@ import { runWorkflow } from "../src/execute.js";
 import type { Workflow } from "../src/schemas.js";
 
 const linear: Workflow = {
-  version: "1.0",
+  orinocoflow_version: "1.0",
   graph_id: "linear",
   entry_point: "a",
   nodes: [
@@ -15,7 +15,7 @@ const linear: Workflow = {
 };
 
 const branching: Workflow = {
-  version: "1.0",
+  orinocoflow_version: "1.0",
   graph_id: "branching",
   entry_point: "start",
   nodes: [
@@ -34,7 +34,7 @@ const branching: Workflow = {
 };
 
 const retryWorkflow: Workflow = {
-  version: "1.0",
+  orinocoflow_version: "1.0",
   graph_id: "retry",
   entry_point: "verify",
   nodes: [

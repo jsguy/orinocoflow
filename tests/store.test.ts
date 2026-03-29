@@ -8,7 +8,7 @@ const makeSnapshot = (): SuspendedExecution => ({
   suspendedAtNodeId: "pause",
   state: { step: 1, data: "hello" },
   workflowSnapshot: parse({
-    version: "1.0",
+    orinocoflow_version: "1.0",
     graph_id: "test-workflow",
     entry_point: "a",
     nodes: [{ id: "a", type: "a" }, { id: "pause", type: "interrupt" }],

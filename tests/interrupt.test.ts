@@ -10,7 +10,7 @@ const identityHandler = async (_node: WorkflowNode, state: WorkflowState) => sta
 
 const makeInterruptWorkflow = () =>
   parse({
-    version: "1.0",
+    orinocoflow_version: "1.0",
     graph_id: "interrupt_01",
     entry_point: "before",
     nodes: [
@@ -26,7 +26,7 @@ const makeInterruptWorkflow = () =>
 
 const makeTerminalInterruptWorkflow = () =>
   parse({
-    version: "1.0",
+    orinocoflow_version: "1.0",
     graph_id: "interrupt_terminal",
     entry_point: "before",
     nodes: [
@@ -40,7 +40,7 @@ const makeTerminalInterruptWorkflow = () =>
 
 const makeRetryWorkflow = () =>
   parse({
-    version: "1.0",
+    orinocoflow_version: "1.0",
     graph_id: "retry_01",
     entry_point: "coder",
     nodes: [
@@ -213,7 +213,7 @@ describe("edge retry limits", () => {
     // Workflow: coder → qe (conditional, maxRetries:1, onExhausted:human) → human
     //          coder → qe is standard, qe loops back to coder when failed
     const workflow = parse({
-      version: "1.0",
+      orinocoflow_version: "1.0",
       graph_id: "retry_resume",
       entry_point: "coder",
       nodes: [
@@ -273,7 +273,7 @@ describe("edge retry limits", () => {
 
   it("7.10 WorkflowConfigurationError is thrown when onExhausted references a non-existent node", async () => {
     const workflow = parse({
-      version: "1.0",
+      orinocoflow_version: "1.0",
       graph_id: "bad_exhausted",
       entry_point: "coder",
       nodes: [

@@ -3,7 +3,7 @@ import { renderViz } from "../src/cli/viz.js";
 import type { Workflow } from "../src/schemas.js";
 
 const linear: Workflow = {
-  version: "1.0",
+  orinocoflow_version: "1.0",
   graph_id: "linear",
   entry_point: "a",
   nodes: [
@@ -18,7 +18,7 @@ const linear: Workflow = {
 };
 
 const withConditional: Workflow = {
-  version: "1.0",
+  orinocoflow_version: "1.0",
   graph_id: "branching",
   entry_point: "start",
   nodes: [
@@ -37,7 +37,7 @@ const withConditional: Workflow = {
 };
 
 const withLoop: Workflow = {
-  version: "1.0",
+  orinocoflow_version: "1.0",
   graph_id: "loop",
   entry_point: "check",
   nodes: [
@@ -56,7 +56,7 @@ const withLoop: Workflow = {
 };
 
 const withMerge: Workflow = {
-  version: "1.0",
+  orinocoflow_version: "1.0",
   graph_id: "merge",
   entry_point: "start",
   nodes: [
@@ -78,7 +78,7 @@ const withMerge: Workflow = {
 };
 
 const withRetry: Workflow = {
-  version: "1.0",
+  orinocoflow_version: "1.0",
   graph_id: "retry",
   entry_point: "verify",
   nodes: [

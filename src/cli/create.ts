@@ -48,7 +48,7 @@ const BASIC_YAML = `\
 #
 # ───────────────────────────────────────────────────────────────────────────────
 
-version: "1.0"
+orinocoflow_version: "1.0"
 graph_id: my-pipeline       # unique identifier for this workflow
 entry_point: fetch           # id of the first node to run
 
@@ -128,7 +128,7 @@ const STANDARD_YAML = `\
 #
 # ───────────────────────────────────────────────────────────────────────────────
 
-version: "1.0"
+orinocoflow_version: "1.0"
 graph_id: my-pipeline
 entry_point: fetch
 
@@ -228,7 +228,7 @@ function advancedMainYaml(subPath: string): string {
 #
 # ───────────────────────────────────────────────────────────────────────────────
 
-version: "1.0"
+orinocoflow_version: "1.0"
 graph_id: my-pipeline
 entry_point: intake
 
@@ -269,7 +269,7 @@ const ADVANCED_SUB_YAML = `\
 #
 # ───────────────────────────────────────────────────────────────────────────────
 
-version: "1.0"
+orinocoflow_version: "1.0"
 graph_id: review-pipeline     # must match workflow_id in the parent workflow
 entry_point: check
 

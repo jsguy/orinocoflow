@@ -1,0 +1,12 @@
+node_type: fetch
+description: Fetches the top Hacker News story and its top comments via the Algolia HN API
+outputs:
+  - name: story_title
+    type: string
+    description: Title of the top HN story
+  - name: story_url
+    type: string
+    description: URL of the story (empty string if not present)
+  - name: comments
+    type: array
+    description: Up to 5 top comments as plain strings (HTML stripped)

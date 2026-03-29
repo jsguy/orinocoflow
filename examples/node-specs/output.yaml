@@ -1,0 +1,7 @@
+node_type: output
+description: Publishes the approved roast to stdout and completes the workflow
+inputs:
+  - name: roast
+    type: string
+    required: true
+    description: The approved roast text to publish

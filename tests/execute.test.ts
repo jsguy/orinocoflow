@@ -6,7 +6,7 @@ import type { WorkflowNode, WorkflowState } from "../src/schemas.js";
 
 const makeLinearWorkflow = () =>
   parse({
-    version: "1.0",
+    orinocoflow_version: "1.0",
     graph_id: "linear_01",
     entry_point: "step_a",
     nodes: [
@@ -72,7 +72,7 @@ describe("runWorkflow", () => {
 
   it("follows conditional edges correctly", async () => {
     const workflow = parse({
-      version: "1.0",
+      orinocoflow_version: "1.0",
       graph_id: "cond_01",
       entry_point: "start",
       nodes: [
@@ -106,7 +106,7 @@ describe("runWorkflow", () => {
 
   it("throws WorkflowCycleError when maxSteps exceeded", async () => {
     const workflow = parse({
-      version: "1.0",
+      orinocoflow_version: "1.0",
       graph_id: "cycle_01",
       entry_point: "a",
       nodes: [{ id: "a", type: "task" }, { id: "b", type: "task" }],
@@ -135,7 +135,7 @@ describe("runWorkflow", () => {
 
   it("throws NodeNotFoundError for missing node", async () => {
     const workflow = parse({
-      version: "1.0",
+      orinocoflow_version: "1.0",
       graph_id: "missing_01",
       entry_point: "ghost",
       nodes: [],
@@ -168,7 +168,7 @@ describe("runWorkflowStream", () => {
 describe("handler resolution", () => {
   const makeVerifyWorkflow = () =>
     parse({
-      version: "1.0",
+      orinocoflow_version: "1.0",
       graph_id: "verify_01",
       entry_point: "my-verify",
       nodes: [{ id: "my-verify", type: "verify" }],

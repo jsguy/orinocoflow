@@ -8,8 +8,12 @@ The system SHALL parse a `.yaml` or `.yml` file using `yaml.parse()` and validat
 - **THEN** it returns a `Workflow` object matching the JSON equivalent
 
 #### Scenario: YAML with invalid schema
-- **WHEN** the YAML is syntactically valid but missing required fields (e.g. no `version`)
+- **WHEN** the YAML is syntactically valid but missing required fields (e.g. no `graph_id`)
 - **THEN** it throws a Zod `ZodError`
+
+#### Scenario: YAML without orinocoflow_version field
+- **WHEN** the YAML is syntactically valid and `orinocoflow_version` is absent
+- **THEN** it returns a valid `Workflow` object (the field is optional)
 
 #### Scenario: Malformed YAML syntax
 - **WHEN** the file contains invalid YAML (e.g. bad indentation, unclosed string)
