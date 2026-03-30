@@ -11,8 +11,9 @@ export interface RunOptions {
     onEvent?: (event: WorkflowEvent) => void;
     /** Internal: prefix for sub-workflow event nodeIds */
     _nodeIdPrefix?: string;
-    /** How to merge branch end states after a parallel fork. Default "strict". */
-    parallelMerge?: "strict" | "overwrite";
+    /** How to merge branch end states after a parallel fork. Default "strict".
+     *  Pass a function for full control: receives (branchStates, preForkState) and returns merged state. */
+    parallelMerge?: "strict" | "overwrite" | ((branchStates: WorkflowState[], preForkState: WorkflowState) => WorkflowState);
     /** @internal abort when another parallel branch fails (fail-fast) */
     _parallelSiblingAbort?: AbortSignal;
 }

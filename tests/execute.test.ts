@@ -225,6 +225,26 @@ describe("runWorkflow", () => {
     expect(state.x).toBe(2);
   });
 
+  it("uses custom merge function when parallelMerge is a function", async () => {
+    const workflow = makeParallelWorkflow();
+    const handler = async (node: WorkflowNode, state: WorkflowState) => {
+      if (node.id === "branch_a") return { ...state, tracks: { a: 1 } };
+      if (node.id === "branch_b") return { ...state, tracks: { b: 2 } };
+      return state;
+    };
+    const { state } = await runCompleted(workflow, { base: true }, {
+      handlers: { task: handler },
+      parallelMerge: (branchStates, preForkState) => {
+        const mergedTracks: Record<string, unknown> = {};
+        for (const bs of branchStates) Object.assign(mergedTracks, (bs as any).tracks ?? {});
+        return { ...preForkState, tracks: mergedTracks };
+      },
+    });
+    expect(state.base).toBe(true);
+    expect((state.tracks as any).a).toBe(1);
+    expect((state.tracks as any).b).toBe(2);
+  });
+
   it("aborts sibling branches on first failure (fail-fast)", async () => {
     const workflow = parse({
       orinocoflow_version: "1.0",

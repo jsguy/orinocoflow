@@ -27,8 +27,9 @@ export interface RunOptions {
   onEvent?: (event: WorkflowEvent) => void;
   /** Internal: prefix for sub-workflow event nodeIds */
   _nodeIdPrefix?: string;
-  /** How to merge branch end states after a parallel fork. Default "strict". */
-  parallelMerge?: "strict" | "overwrite";
+  /** How to merge branch end states after a parallel fork. Default "strict".
+   *  Pass a function for full control: receives (branchStates, preForkState) and returns merged state. */
+  parallelMerge?: "strict" | "overwrite" | ((branchStates: WorkflowState[], preForkState: WorkflowState) => WorkflowState);
   /** @internal abort when another parallel branch fails (fail-fast) */
   _parallelSiblingAbort?: AbortSignal;
 }
@@ -55,9 +56,13 @@ function cloneWorkflowStateForParallel(state: WorkflowState): WorkflowState {
 
 function mergeParallelBranchStates(
   states: WorkflowState[],
-  mode: "strict" | "overwrite",
+  mode: RunOptions["parallelMerge"],
+  preForkState?: WorkflowState,
 ): WorkflowState {
   if (states.length === 0) return {};
+  if (typeof mode === "function") {
+    return mode(states, preForkState!);
+  }
   if (mode === "overwrite") {
     return Object.assign({}, ...states);
   }
@@ -411,7 +416,7 @@ async function _execute(
       }
 
       try {
-        currentState = mergeParallelBranchStates(branchStates, parallelMerge);
+        currentState = mergeParallelBranchStates(branchStates, parallelMerge, currentState);
       } catch (err) {
         emit({
           type: "error",

@@ -366,8 +366,11 @@ function cloneWorkflowStateForParallel(state) {
     );
   }
 }
-function mergeParallelBranchStates(states, mode) {
+function mergeParallelBranchStates(states, mode, preForkState) {
   if (states.length === 0) return {};
+  if (typeof mode === "function") {
+    return mode(states, preForkState);
+  }
   if (mode === "overwrite") {
     return Object.assign({}, ...states);
   }
@@ -648,7 +651,7 @@ async function _execute(workflow, initialState, options, emit, entryNodeId, step
         signal?.removeEventListener("abort", onUserAbort);
       }
       try {
-        currentState = mergeParallelBranchStates(branchStates, parallelMerge);
+        currentState = mergeParallelBranchStates(branchStates, parallelMerge, currentState);
       } catch (err) {
         emit({
           type: "error",
