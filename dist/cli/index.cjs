@@ -56,12 +56,19 @@ var ConditionalEdgeSchema = import_zod.z.object({
   maxRetries: import_zod.z.number().int().nonnegative().optional(),
   onExhausted: import_zod.z.string().optional()
 });
+var ParallelEdgeSchema = import_zod.z.object({
+  from: import_zod.z.string(),
+  type: import_zod.z.literal("parallel"),
+  targets: import_zod.z.array(import_zod.z.string()).min(2),
+  join: import_zod.z.string()
+});
 var EdgeSchema = import_zod.z.discriminatedUnion("type", [
   StandardEdgeSchema,
-  ConditionalEdgeSchema
+  ConditionalEdgeSchema,
+  ParallelEdgeSchema
 ]);
 var WorkflowSchema = import_zod.z.object({
-  version: import_zod.z.literal("1.0"),
+  orinocoflow_version: import_zod.z.string().optional(),
   graph_id: import_zod.z.string(),
   entry_point: import_zod.z.string(),
   nodes: import_zod.z.array(WorkflowNodeSchema),
@@ -70,104 +77,26 @@ var WorkflowSchema = import_zod.z.object({
 function parse(raw) {
   return WorkflowSchema.parse(raw);
 }
-
-// src/cli/compile.ts
-async function compileFile(path) {
-  const content = await (0, import_promises.readFile)(path, "utf8");
-  const ext = path.split(".").pop()?.toLowerCase();
-  if (ext === "yaml" || ext === "yml") {
-    return parse((0, import_yaml.parse)(content));
-  } else if (ext === "json") {
-    return parse(JSON.parse(content));
-  } else {
-    throw new Error(`Unsupported file extension ".${ext}": expected .yaml, .yml, or .json`);
-  }
-}
-
-// src/cli/viz.ts
-function buildAdjList(edges) {
-  const adj = /* @__PURE__ */ new Map();
-  for (const edge of edges) {
-    if (!adj.has(edge.from)) adj.set(edge.from, []);
-    adj.get(edge.from).push(edge);
-  }
-  return adj;
-}
-function formatCondition(edge) {
-  const { field, operator, value } = edge.condition;
-  return `${field} ${operator} ${JSON.stringify(value)}`;
-}
-function formatConditionFalse(edge) {
-  const { field, operator, value } = edge.condition;
-  if (operator === "===" && typeof value === "boolean") return `${field} === ${JSON.stringify(!value)}`;
-  if (operator === "!==" && typeof value === "boolean") return `${field} !== ${JSON.stringify(!value)}`;
-  const negOp = { "===": "!==", "!==": "===", "<": ">=", ">": "<=", "<=": ">", ">=": "<" };
-  return `${field} ${negOp[operator] ?? `!(${operator})`} ${JSON.stringify(value)}`;
-}
-function dfs(nodeId, adj, ancestors, rendered, prefix, lines) {
-  ancestors.add(nodeId);
-  rendered.add(nodeId);
-  const outgoing = adj.get(nodeId) ?? [];
-  for (let i = 0; i < outgoing.length; i++) {
-    const edge = outgoing[i];
-    const isLast = i === outgoing.length - 1;
-    const connector = isLast ? "\u2514\u2500\u2500" : "\u251C\u2500\u2500";
-    const continuation = isLast ? "   " : "\u2502  ";
-    if (edge.type === "standard") {
-      const target = edge.to;
-      let label = target;
-      if (ancestors.has(target)) {
-        label += " (loop)";
-        lines.push(`${prefix}${connector}> ${label}`);
-      } else if (rendered.has(target)) {
-        label += " (visited)";
-        lines.push(`${prefix}${connector}> ${label}`);
-      } else {
-        lines.push(`${prefix}${connector}> ${target}`);
-        dfs(target, adj, ancestors, rendered, prefix + continuation + "  ", lines);
-      }
-    } else {
-      const cond = edge;
-      const condStr = formatCondition(cond);
-      const retryStr = cond.maxRetries !== void 0 ? `  (retry: ${cond.maxRetries}, exhausted: ${cond.onExhausted})` : "";
-      const branches = [
-        { label: `[${condStr}]`, target: cond.routes.true, extra: "" },
-        { label: `[${formatConditionFalse(cond)}]`, target: cond.routes.false, extra: retryStr }
-      ];
-      for (let b = 0; b < branches.length; b++) {
-        const { label, target, extra } = branches[b];
-        const bIsLast = isLast && b === branches.length - 1;
-        const bConnector = bIsLast ? "\u2514\u2500\u2500" : "\u251C\u2500\u2500";
-        const bContinuation = bIsLast ? "   " : "\u2502  ";
-        let targetLabel = target + extra;
-        if (ancestors.has(target)) {
-          targetLabel = target + " (loop)" + extra;
-          lines.push(`${prefix}${bConnector}${label}\u2500\u2500> ${targetLabel}`);
-        } else if (rendered.has(target)) {
-          targetLabel = target + " (visited)" + extra;
-          lines.push(`${prefix}${bConnector}${label}\u2500\u2500> ${targetLabel}`);
-        } else {
-          lines.push(`${prefix}${bConnector}${label}\u2500\u2500> ${target}${extra}`);
-          dfs(target, adj, ancestors, rendered, prefix + bContinuation + "  ", lines);
-        }
-      }
-    }
-  }
-  ancestors.delete(nodeId);
-}
-function renderViz(workflow) {
-  const adj = buildAdjList(workflow.edges);
-  const ancestors = /* @__PURE__ */ new Set();
-  const rendered = /* @__PURE__ */ new Set();
-  const lines = [];
-  lines.push(workflow.entry_point);
-  dfs(workflow.entry_point, adj, ancestors, rendered, "  ", lines);
-  return lines.join("\n");
-}
-
-// src/cli/simulate.ts
-var import_promises2 = require("fs/promises");
-var import_yaml2 = require("yaml");
+var NodeSpecFieldSchema = import_zod.z.object({
+  type: import_zod.z.string().optional(),
+  required: import_zod.z.boolean().optional(),
+  description: import_zod.z.string().optional()
+});
+var NodeSpecIOSchema = import_zod.z.object({
+  name: import_zod.z.string(),
+  type: import_zod.z.string().optional(),
+  description: import_zod.z.string().optional()
+});
+var NodeSpecInputSchema = NodeSpecIOSchema.extend({
+  required: import_zod.z.boolean().optional()
+});
+var NodeSpecSchema = import_zod.z.object({
+  node_type: import_zod.z.string(),
+  description: import_zod.z.string().optional(),
+  config: import_zod.z.record(NodeSpecFieldSchema).optional(),
+  inputs: import_zod.z.array(NodeSpecInputSchema).optional(),
+  outputs: import_zod.z.array(NodeSpecIOSchema).optional()
+});
 
 // src/errors.ts
 var NodeNotFoundError = class extends Error {
@@ -219,6 +148,270 @@ var WorkflowConfigurationError = class extends Error {
     this.name = "WorkflowConfigurationError";
   }
 };
+var ParallelBranchDidNotConvergeError = class extends Error {
+  constructor(branchEntry, expectedJoin, actualTerminal) {
+    super(
+      `Parallel branch from "${branchEntry}" did not converge to join "${expectedJoin}"` + (actualTerminal !== void 0 ? ` (ended at "${actualTerminal}")` : " (no successor to join)")
+    );
+    this.branchEntry = branchEntry;
+    this.expectedJoin = expectedJoin;
+    this.actualTerminal = actualTerminal;
+    this.name = "ParallelBranchDidNotConvergeError";
+  }
+};
+
+// src/validate.ts
+function nodeById(workflow, id) {
+  return workflow.nodes.find((n) => n.id === id);
+}
+function collectParallelBranchNodes(workflow, target, join) {
+  if (target === join) {
+    throw new WorkflowConfigurationError(
+      `Parallel branch target cannot be the join node "${join}" (zero-hop branches are not allowed).`
+    );
+  }
+  const visited = [];
+  let cur = target;
+  for (; ; ) {
+    visited.push(cur);
+    const outgoing = workflow.edges.filter((e2) => e2.from === cur);
+    if (outgoing.length !== 1) {
+      throw new WorkflowConfigurationError(
+        `Parallel branch from "${target}" invalid at "${cur}": expected exactly one outgoing edge toward join "${join}".`
+      );
+    }
+    const e = outgoing[0];
+    if (e.type === "parallel") {
+      throw new WorkflowConfigurationError(
+        `Nested parallel from "${cur}" is not allowed inside a parallel branch (simple tier).`
+      );
+    }
+    if (e.type === "conditional") {
+      throw new WorkflowConfigurationError(
+        `Conditional edge from "${cur}" is not allowed inside a parallel branch (simple tier).`
+      );
+    }
+    if (e.type !== "standard") {
+      throw new WorkflowConfigurationError(`Parallel branch from "${target}" has non-standard edge from "${cur}".`);
+    }
+    if (e.to === join) {
+      return visited;
+    }
+    if (visited.includes(e.to)) {
+      throw new WorkflowConfigurationError(`Parallel branch from "${target}" contains a cycle at "${e.to}".`);
+    }
+    cur = e.to;
+  }
+}
+function assertNoInterruptOrSubworkflow(workflow, nodeIds, context) {
+  for (const id of nodeIds) {
+    const n = nodeById(workflow, id);
+    if (!n) continue;
+    if (n.type === "interrupt") {
+      throw new WorkflowConfigurationError(
+        `Node "${id}" (${context}) cannot be an interrupt inside a parallel branch (v1).`
+      );
+    }
+    if (n.type === "sub_workflow") {
+      throw new WorkflowConfigurationError(
+        `Node "${id}" (${context}) cannot be a sub_workflow inside a parallel branch (v1).`
+      );
+    }
+  }
+}
+function validateParallelWorkflow(workflow) {
+  const nodeIds = new Set(workflow.nodes.map((n) => n.id));
+  const byFrom = /* @__PURE__ */ new Map();
+  for (const e of workflow.edges) {
+    if (!byFrom.has(e.from)) byFrom.set(e.from, []);
+    byFrom.get(e.from).push(e);
+  }
+  for (const [from, list] of byFrom) {
+    if (list.length > 1) {
+      throw new WorkflowConfigurationError(
+        `Node "${from}" has ${list.length} outgoing edges; exactly one is required.`
+      );
+    }
+  }
+  const parallelEdges = workflow.edges.filter((e) => e.type === "parallel");
+  const joinUsedBy = /* @__PURE__ */ new Map();
+  for (const pe of parallelEdges) {
+    if (joinUsedBy.has(pe.join)) {
+      throw new WorkflowConfigurationError(
+        `Join node "${pe.join}" is referenced by more than one parallel edge; each join must be unique.`
+      );
+    }
+    joinUsedBy.set(pe.join, pe);
+    if (!nodeIds.has(pe.from)) {
+      throw new WorkflowConfigurationError(`Parallel edge from unknown node "${pe.from}".`);
+    }
+    if (!nodeIds.has(pe.join)) {
+      throw new WorkflowConfigurationError(`Parallel edge references unknown join node "${pe.join}".`);
+    }
+    const tset = new Set(pe.targets);
+    if (tset.size !== pe.targets.length) {
+      throw new WorkflowConfigurationError(`Parallel edge from "${pe.from}" has duplicate targets.`);
+    }
+    for (const t of pe.targets) {
+      if (!nodeIds.has(t)) {
+        throw new WorkflowConfigurationError(`Parallel edge from "${pe.from}" references unknown target "${t}".`);
+      }
+      if (t === pe.join) {
+        throw new WorkflowConfigurationError(`Parallel target cannot equal join "${pe.join}".`);
+      }
+    }
+    const branchChains = [];
+    const allBranchNodes = /* @__PURE__ */ new Set();
+    for (const target of pe.targets) {
+      const chain = collectParallelBranchNodes(workflow, target, pe.join);
+      assertNoInterruptOrSubworkflow(workflow, chain, `parallel branch from "${target}"`);
+      for (const id of chain) {
+        if (allBranchNodes.has(id)) {
+          throw new WorkflowConfigurationError(
+            `Parallel branches from "${pe.from}" overlap at node "${id}"; branches must be disjoint (simple tier).`
+          );
+        }
+        allBranchNodes.add(id);
+      }
+      branchChains.push(chain);
+    }
+    const preds = /* @__PURE__ */ new Set();
+    for (const chain of branchChains) {
+      const last = chain[chain.length - 1];
+      preds.add(last);
+    }
+    const intoJoin = workflow.edges.filter(
+      (e) => e.type === "standard" && e.to === pe.join
+    );
+    const fromIncoming = new Set(intoJoin.map((e) => e.from));
+    if (intoJoin.length !== preds.size || ![...preds].every((p) => fromIncoming.has(p))) {
+      throw new WorkflowConfigurationError(
+        `Join "${pe.join}" may only be entered via standard edges from parallel branch tips [${[...preds].sort().join(", ")}]; found edges from [${[...fromIncoming].sort().join(", ")}]. No shortcuts or extra ingress.`
+      );
+    }
+  }
+}
+
+// src/cli/compile.ts
+async function compileFile(path) {
+  const content = await (0, import_promises.readFile)(path, "utf8");
+  const ext = path.split(".").pop()?.toLowerCase();
+  let workflow;
+  if (ext === "yaml" || ext === "yml") {
+    workflow = parse((0, import_yaml.parse)(content));
+  } else if (ext === "json") {
+    workflow = parse(JSON.parse(content));
+  } else {
+    throw new Error(`Unsupported file extension ".${ext}": expected .yaml, .yml, or .json`);
+  }
+  validateParallelWorkflow(workflow);
+  return workflow;
+}
+
+// src/cli/viz.ts
+function buildAdjList(edges) {
+  const adj = /* @__PURE__ */ new Map();
+  for (const edge of edges) {
+    if (!adj.has(edge.from)) adj.set(edge.from, []);
+    adj.get(edge.from).push(edge);
+  }
+  return adj;
+}
+function formatCondition(edge) {
+  const { field, operator, value } = edge.condition;
+  return `${field} ${operator} ${JSON.stringify(value)}`;
+}
+function formatConditionFalse(edge) {
+  const { field, operator, value } = edge.condition;
+  if (operator === "===" && typeof value === "boolean") return `${field} === ${JSON.stringify(!value)}`;
+  if (operator === "!==" && typeof value === "boolean") return `${field} !== ${JSON.stringify(!value)}`;
+  const negOp = { "===": "!==", "!==": "===", "<": ">=", ">": "<=", "<=": ">", ">=": "<" };
+  return `${field} ${negOp[operator] ?? `!(${operator})`} ${JSON.stringify(value)}`;
+}
+function dfs(nodeId, adj, ancestors, rendered, prefix, lines) {
+  ancestors.add(nodeId);
+  rendered.add(nodeId);
+  const outgoing = adj.get(nodeId) ?? [];
+  for (let i = 0; i < outgoing.length; i++) {
+    const edge = outgoing[i];
+    const isLast = i === outgoing.length - 1;
+    const connector = isLast ? "\u2514\u2500\u2500" : "\u251C\u2500\u2500";
+    const continuation = isLast ? "   " : "\u2502  ";
+    if (edge.type === "standard") {
+      const target = edge.to;
+      let label = target;
+      if (ancestors.has(target)) {
+        label += " (loop)";
+        lines.push(`${prefix}${connector}> ${label}`);
+      } else if (rendered.has(target)) {
+        label += " (visited)";
+        lines.push(`${prefix}${connector}> ${label}`);
+      } else {
+        lines.push(`${prefix}${connector}> ${target}`);
+        dfs(target, adj, ancestors, rendered, prefix + continuation + "  ", lines);
+      }
+    } else if (edge.type === "parallel") {
+      const pe = edge;
+      for (let b = 0; b < pe.targets.length; b++) {
+        const target = pe.targets[b];
+        const bIsLast = isLast && b === pe.targets.length - 1;
+        const bConnector = bIsLast ? "\u2514\u2500\u2500" : "\u251C\u2500\u2500";
+        const bContinuation = bIsLast ? "   " : "\u2502  ";
+        const label = `[parallel \u2192 ${pe.join}]`;
+        let targetLabel = target;
+        if (ancestors.has(target)) {
+          targetLabel += " (loop)";
+          lines.push(`${prefix}${bConnector}${label}\u2500\u2500> ${targetLabel}`);
+        } else if (rendered.has(target)) {
+          targetLabel += " (visited)";
+          lines.push(`${prefix}${bConnector}${label}\u2500\u2500> ${targetLabel}`);
+        } else {
+          lines.push(`${prefix}${bConnector}${label}\u2500\u2500> ${target}`);
+          dfs(target, adj, ancestors, rendered, prefix + bContinuation + "  ", lines);
+        }
+      }
+    } else {
+      const cond = edge;
+      const condStr = formatCondition(cond);
+      const retryStr = cond.maxRetries !== void 0 ? `  (retry: ${cond.maxRetries}, exhausted: ${cond.onExhausted})` : "";
+      const branches = [
+        { label: `[${condStr}]`, target: cond.routes.true, extra: "" },
+        { label: `[${formatConditionFalse(cond)}]`, target: cond.routes.false, extra: retryStr }
+      ];
+      for (let b = 0; b < branches.length; b++) {
+        const { label, target, extra } = branches[b];
+        const bIsLast = isLast && b === branches.length - 1;
+        const bConnector = bIsLast ? "\u2514\u2500\u2500" : "\u251C\u2500\u2500";
+        const bContinuation = bIsLast ? "   " : "\u2502  ";
+        let targetLabel = target + extra;
+        if (ancestors.has(target)) {
+          targetLabel = target + " (loop)" + extra;
+          lines.push(`${prefix}${bConnector}${label}\u2500\u2500> ${targetLabel}`);
+        } else if (rendered.has(target)) {
+          targetLabel = target + " (visited)" + extra;
+          lines.push(`${prefix}${bConnector}${label}\u2500\u2500> ${targetLabel}`);
+        } else {
+          lines.push(`${prefix}${bConnector}${label}\u2500\u2500> ${target}${extra}`);
+          dfs(target, adj, ancestors, rendered, prefix + bContinuation + "  ", lines);
+        }
+      }
+    }
+  }
+  ancestors.delete(nodeId);
+}
+function renderViz(workflow) {
+  const adj = buildAdjList(workflow.edges);
+  const ancestors = /* @__PURE__ */ new Set();
+  const rendered = /* @__PURE__ */ new Set();
+  const lines = [];
+  lines.push(workflow.entry_point);
+  dfs(workflow.entry_point, adj, ancestors, rendered, "  ", lines);
+  return lines.join("\n");
+}
+
+// src/cli/simulate.ts
+var import_promises2 = require("fs/promises");
+var import_yaml2 = require("yaml");
 
 // src/router.ts
 function evaluateOperator(fieldValue, operator, conditionValue) {
@@ -251,10 +444,7 @@ function evaluateOperator(fieldValue, operator, conditionValue) {
       throw new InvalidEdgeError(`Unknown operator: "${operator}"`);
   }
 }
-function resolveNextNode(currentNodeId, edges, state, workflowNodes) {
-  const outgoing = edges.filter((e) => e.from === currentNodeId);
-  if (outgoing.length === 0) return void 0;
-  const edge = outgoing[0];
+function resolveSingleOutgoingEdge(edge, state, workflowNodes) {
   if (edge.type === "standard") {
     return { nextNodeId: edge.to, edgeType: "standard" };
   }
@@ -291,19 +481,164 @@ function resolveNextNode(currentNodeId, edges, state, workflowNodes) {
   }
   return { nextNodeId: loopbackTarget, edgeType: "conditional", conditionResult };
 }
+function resolveOutgoing(currentNodeId, edges, state, workflowNodes) {
+  const outgoing = edges.filter((e) => e.from === currentNodeId);
+  if (outgoing.length === 0) return void 0;
+  if (outgoing.length > 1) {
+    throw new WorkflowConfigurationError(
+      `Node "${currentNodeId}" has ${outgoing.length} outgoing edges; exactly one is required.`
+    );
+  }
+  const edge = outgoing[0];
+  if (edge.type === "parallel") {
+    return { kind: "parallel", edge };
+  }
+  return { kind: "single", resolution: resolveSingleOutgoingEdge(edge, state, workflowNodes) };
+}
 
 // src/execute.ts
-async function _execute(workflow, initialState, options, emit, entryNodeId) {
+function cloneWorkflowStateForParallel(state) {
+  try {
+    return structuredClone(state);
+  } catch {
+    throw new WorkflowConfigurationError(
+      "Parallel execution requires structuredClone-able workflow state (no functions, symbols, or non-cloneable values)."
+    );
+  }
+}
+function mergeParallelBranchStates(states, mode) {
+  if (states.length === 0) return {};
+  if (mode === "overwrite") {
+    return Object.assign({}, ...states);
+  }
+  const out = {};
+  for (const s of states) {
+    for (const key of Object.keys(s)) {
+      if (Object.prototype.hasOwnProperty.call(out, key)) {
+        if (!Object.is(out[key], s[key])) {
+          throw new WorkflowConfigurationError(
+            `Parallel merge conflict on top-level state key "${key}" (strict mode).`
+          );
+        }
+      } else {
+        out[key] = s[key];
+      }
+    }
+  }
+  return out;
+}
+async function runBranchUntilJoin(workflow, branchEntry, joinId, branchInitialState, options, emit, forkNodeId, branchNodePrefix, joinNodeIdPrefixed, stepsRef, maxSteps) {
+  const { handlers, signal, _parallelSiblingAbort } = options;
+  let currentNodeId = branchEntry;
+  let currentState = branchInitialState;
+  while (currentNodeId !== void 0) {
+    if (signal?.aborted) {
+      emit({ type: "error", error: new WorkflowAbortedError() });
+      throw new WorkflowAbortedError();
+    }
+    if (_parallelSiblingAbort?.aborted) {
+      emit({ type: "error", error: new WorkflowAbortedError() });
+      throw new WorkflowAbortedError();
+    }
+    if (++stepsRef.n > maxSteps) {
+      const err = new WorkflowCycleError(maxSteps);
+      emit({ type: "error", error: err });
+      throw err;
+    }
+    const node = workflow.nodes.find((n) => n.id === currentNodeId);
+    if (!node) {
+      const err = new NodeNotFoundError(currentNodeId);
+      emit({ type: "error", nodeId: branchNodePrefix(currentNodeId), error: err });
+      throw err;
+    }
+    const prefixedNodeId = branchNodePrefix(node.id);
+    if (node.type === "interrupt") {
+      throw new WorkflowConfigurationError(
+        `Interrupt node "${node.id}" is not allowed inside a parallel branch (v1).`
+      );
+    }
+    emit({
+      type: "node_start",
+      nodeId: prefixedNodeId,
+      nodeType: node.type,
+      state: currentState
+    });
+    const nodeStart = Date.now();
+    try {
+      if (node.type === "sub_workflow") {
+        throw new WorkflowConfigurationError(
+          `Sub-workflow node "${node.id}" is not allowed inside a parallel branch (v1).`
+        );
+      }
+      const handler = handlers[node.type] ?? handlers[node.id];
+      if (!handler) {
+        throw new HandlerError(
+          node.id,
+          new Error(`No handler registered for node type "${node.type}" or id "${node.id}"`)
+        );
+      }
+      currentState = await handler(node, currentState);
+    } catch (err) {
+      if (err instanceof WorkflowAbortedError || err instanceof WorkflowCycleError || err instanceof SubWorkflowNotFoundError || err instanceof WorkflowConfigurationError) {
+        throw err;
+      }
+      const wrapped = err instanceof HandlerError ? err : new HandlerError(node.id, err);
+      emit({ type: "error", nodeId: prefixedNodeId, error: wrapped });
+      throw wrapped;
+    }
+    emit({
+      type: "node_complete",
+      nodeId: prefixedNodeId,
+      nodeType: node.type,
+      state: currentState,
+      durationMs: Date.now() - nodeStart
+    });
+    const outgoing = resolveOutgoing(currentNodeId, workflow.edges, currentState, workflow.nodes);
+    if (outgoing === void 0) {
+      throw new ParallelBranchDidNotConvergeError(branchEntry, joinId, currentNodeId);
+    }
+    if (outgoing.kind === "parallel") {
+      throw new WorkflowConfigurationError(
+        `Nested parallel from "${currentNodeId}" inside branch "${branchEntry}" is invalid.`
+      );
+    }
+    const resolution = outgoing.resolution;
+    if (resolution.nextNodeId === joinId) {
+      emit({
+        type: "edge_taken",
+        from: prefixedNodeId,
+        to: joinNodeIdPrefixed,
+        edgeType: resolution.edgeType,
+        conditionResult: resolution.conditionResult,
+        ...resolution.retriesExhausted ? { retriesExhausted: true, onExhausted: resolution.onExhausted } : {}
+      });
+      return currentState;
+    }
+    emit({
+      type: "edge_taken",
+      from: prefixedNodeId,
+      to: branchNodePrefix(resolution.nextNodeId),
+      edgeType: resolution.edgeType,
+      conditionResult: resolution.conditionResult,
+      ...resolution.retriesExhausted ? { retriesExhausted: true, onExhausted: resolution.onExhausted } : {}
+    });
+    currentNodeId = resolution.nextNodeId;
+  }
+  throw new ParallelBranchDidNotConvergeError(branchEntry, joinId, void 0);
+}
+async function _execute(workflow, initialState, options, emit, entryNodeId, stepsRef) {
   const {
     handlers,
     registry = {},
     maxSteps = 1e3,
     signal,
-    _nodeIdPrefix = ""
+    _nodeIdPrefix = "",
+    parallelMerge = "strict",
+    _parallelSiblingAbort
   } = options;
   const prefix = (id) => _nodeIdPrefix ? `${_nodeIdPrefix}/${id}` : id;
   const workflowStart = Date.now();
-  let steps = 0;
+  const steps = stepsRef ?? { n: 0 };
   emit({
     type: "workflow_start",
     workflowId: workflow.graph_id,
@@ -316,7 +651,11 @@ async function _execute(workflow, initialState, options, emit, entryNodeId) {
       emit({ type: "error", error: new WorkflowAbortedError() });
       throw new WorkflowAbortedError();
     }
-    if (++steps > maxSteps) {
+    if (_parallelSiblingAbort?.aborted) {
+      emit({ type: "error", error: new WorkflowAbortedError() });
+      throw new WorkflowAbortedError();
+    }
+    if (++steps.n > maxSteps) {
       const err = new WorkflowCycleError(maxSteps);
       emit({ type: "error", error: err });
       throw err;
@@ -356,11 +695,14 @@ async function _execute(workflow, initialState, options, emit, entryNodeId) {
           throw new SubWorkflowNotFoundError(subWorkflowId);
         }
         const subWorkflow = parse(rawSubWorkflow);
+        validateParallelWorkflow(subWorkflow);
         const subResult = await _execute(
           subWorkflow,
           currentState,
-          { handlers, registry, maxSteps: maxSteps - steps, signal, _nodeIdPrefix: prefixedNodeId },
-          emit
+          { ...options, signal, _nodeIdPrefix: prefixedNodeId, _parallelSiblingAbort },
+          emit,
+          void 0,
+          steps
         );
         if (subResult.status === "suspended") {
           return subResult;
@@ -391,8 +733,81 @@ async function _execute(workflow, initialState, options, emit, entryNodeId) {
       state: currentState,
       durationMs: Date.now() - nodeStart
     });
-    const resolution = resolveNextNode(currentNodeId, workflow.edges, currentState, workflow.nodes);
-    if (resolution !== void 0) {
+    const outgoing = resolveOutgoing(currentNodeId, workflow.edges, currentState, workflow.nodes);
+    if (outgoing?.kind === "parallel") {
+      const { edge } = outgoing;
+      const joinPrefixed = prefix(edge.join);
+      emit({
+        type: "parallel_fork",
+        from: prefixedNodeId,
+        targets: edge.targets,
+        join: joinPrefixed
+      });
+      const parallelFail = new AbortController();
+      const onUserAbort = () => parallelFail.abort();
+      if (signal) {
+        if (signal.aborted) parallelFail.abort();
+        else signal.addEventListener("abort", onUserAbort, { once: true });
+      }
+      const branchOptions = {
+        ...options,
+        _parallelSiblingAbort: parallelFail.signal
+      };
+      const branchNodePrefix = (nid) => prefix(`${edge.from}/${nid}`);
+      const runOneBranch = async (target) => {
+        const cloned = cloneWorkflowStateForParallel(currentState);
+        try {
+          return await runBranchUntilJoin(
+            workflow,
+            target,
+            edge.join,
+            cloned,
+            branchOptions,
+            emit,
+            edge.from,
+            branchNodePrefix,
+            joinPrefixed,
+            steps,
+            maxSteps
+          );
+        } catch (err) {
+          emit({
+            type: "parallel_branch_error",
+            branchEntry: target,
+            join: joinPrefixed,
+            error: err instanceof Error ? err : new Error(String(err))
+          });
+          parallelFail.abort();
+          throw err;
+        }
+      };
+      let branchStates;
+      try {
+        branchStates = await Promise.all(edge.targets.map((t) => runOneBranch(t)));
+      } finally {
+        signal?.removeEventListener("abort", onUserAbort);
+      }
+      try {
+        currentState = mergeParallelBranchStates(branchStates, parallelMerge);
+      } catch (err) {
+        emit({
+          type: "error",
+          nodeId: prefixedNodeId,
+          error: err instanceof Error ? err : new Error(String(err))
+        });
+        throw err;
+      }
+      emit({
+        type: "parallel_join",
+        from: prefixedNodeId,
+        join: joinPrefixed,
+        targets: edge.targets.map((t) => branchNodePrefix(t))
+      });
+      currentNodeId = edge.join;
+      continue;
+    }
+    if (outgoing?.kind === "single") {
+      const resolution = outgoing.resolution;
       emit({
         type: "edge_taken",
         from: prefixedNodeId,
@@ -414,6 +829,7 @@ async function _execute(workflow, initialState, options, emit, entryNodeId) {
   return { status: "completed", state: currentState, trace: [] };
 }
 async function runWorkflow(workflow, initialState, options) {
+  validateParallelWorkflow(workflow);
   const trace = [];
   const result = await _execute(workflow, initialState, options, (event) => {
     trace.push(event);
@@ -481,6 +897,25 @@ async function runSimulation(workflow, mockFilePath) {
       path.push(event.nodeId);
       const stateStr = JSON.stringify(filterState(event.state));
       console.log(`Step ${step} \u2502 ${pad(label, colW)} \u2502 state: ${stateStr}`);
+    }
+    if (event.type === "parallel_fork") {
+      const blank = " ".repeat(`Step ${step}`.length);
+      const nodeBlank = pad("", colW);
+      console.log(
+        `${blank} \u2502 ${nodeBlank} \u2502 parallel fork: ${event.from} \u2192 [${event.targets.join(", ")}] \u2192 join ${event.join}`
+      );
+    }
+    if (event.type === "parallel_join") {
+      const blank = " ".repeat(`Step ${step}`.length);
+      const nodeBlank = pad("", colW);
+      console.log(`${blank} \u2502 ${nodeBlank} \u2502 parallel join \u2192 ${event.join}`);
+    }
+    if (event.type === "parallel_branch_error") {
+      const blank = " ".repeat(`Step ${step}`.length);
+      const nodeBlank = pad("", colW);
+      console.log(
+        `${blank} \u2502 ${nodeBlank} \u2502 parallel branch error (${event.branchEntry}): ${event.error.message}`
+      );
     }
     if (event.type === "edge_taken") {
       const blank = " ".repeat(`Step ${step}`.length);
@@ -562,7 +997,7 @@ var BASIC_YAML = `# \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
 #
 # \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
-version: "1.0"
+orinocoflow_version: "1.0"
 graph_id: my-pipeline       # unique identifier for this workflow
 entry_point: fetch           # id of the first node to run
 
@@ -640,7 +1075,7 @@ var STANDARD_YAML = `# \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2
 #
 # \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
-version: "1.0"
+orinocoflow_version: "1.0"
 graph_id: my-pipeline
 entry_point: fetch
 
@@ -738,7 +1173,7 @@ function advancedMainYaml(subPath) {
 #
 # \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
-version: "1.0"
+orinocoflow_version: "1.0"
 graph_id: my-pipeline
 entry_point: intake
 
@@ -777,7 +1212,7 @@ var ADVANCED_SUB_YAML = `# \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u255
 #
 # \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
-version: "1.0"
+orinocoflow_version: "1.0"
 graph_id: review-pipeline     # must match workflow_id in the parent workflow
 entry_point: check
 

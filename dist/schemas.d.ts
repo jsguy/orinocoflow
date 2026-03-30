@@ -80,6 +80,22 @@ export declare const ConditionalEdgeSchema: z.ZodObject<{
     maxRetries?: number | undefined;
     onExhausted?: string | undefined;
 }>;
+export declare const ParallelEdgeSchema: z.ZodObject<{
+    from: z.ZodString;
+    type: z.ZodLiteral<"parallel">;
+    targets: z.ZodArray<z.ZodString, "many">;
+    join: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    type: "parallel";
+    join: string;
+    from: string;
+    targets: string[];
+}, {
+    type: "parallel";
+    join: string;
+    from: string;
+    targets: string[];
+}>;
 export declare const EdgeSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
     from: z.ZodString;
     to: z.ZodString;
@@ -148,12 +164,28 @@ export declare const EdgeSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
     };
     maxRetries?: number | undefined;
     onExhausted?: string | undefined;
+}>, z.ZodObject<{
+    from: z.ZodString;
+    type: z.ZodLiteral<"parallel">;
+    targets: z.ZodArray<z.ZodString, "many">;
+    join: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    type: "parallel";
+    join: string;
+    from: string;
+    targets: string[];
+}, {
+    type: "parallel";
+    join: string;
+    from: string;
+    targets: string[];
 }>]>;
 export type StandardEdge = z.infer<typeof StandardEdgeSchema>;
 export type ConditionalEdge = z.infer<typeof ConditionalEdgeSchema>;
+export type ParallelEdge = z.infer<typeof ParallelEdgeSchema>;
 export type Edge = z.infer<typeof EdgeSchema>;
 export declare const WorkflowSchema: z.ZodObject<{
-    version: z.ZodLiteral<"1.0">;
+    orinocoflow_version: z.ZodOptional<z.ZodString>;
     graph_id: z.ZodString;
     entry_point: z.ZodString;
     nodes: z.ZodArray<z.ZodObject<{
@@ -234,9 +266,23 @@ export declare const WorkflowSchema: z.ZodObject<{
         };
         maxRetries?: number | undefined;
         onExhausted?: string | undefined;
+    }>, z.ZodObject<{
+        from: z.ZodString;
+        type: z.ZodLiteral<"parallel">;
+        targets: z.ZodArray<z.ZodString, "many">;
+        join: z.ZodString;
+    }, "strip", z.ZodTypeAny, {
+        type: "parallel";
+        join: string;
+        from: string;
+        targets: string[];
+    }, {
+        type: "parallel";
+        join: string;
+        from: string;
+        targets: string[];
     }>]>, "many">;
 }, "strip", z.ZodTypeAny, {
-    version: "1.0";
     graph_id: string;
     entry_point: string;
     nodes: z.objectOutputType<{
@@ -261,9 +307,14 @@ export declare const WorkflowSchema: z.ZodObject<{
         };
         maxRetries?: number | undefined;
         onExhausted?: string | undefined;
+    } | {
+        type: "parallel";
+        join: string;
+        from: string;
+        targets: string[];
     })[];
+    orinocoflow_version?: string | undefined;
 }, {
-    version: "1.0";
     graph_id: string;
     entry_point: string;
     nodes: z.objectInputType<{
@@ -288,10 +339,103 @@ export declare const WorkflowSchema: z.ZodObject<{
         };
         maxRetries?: number | undefined;
         onExhausted?: string | undefined;
+    } | {
+        type: "parallel";
+        join: string;
+        from: string;
+        targets: string[];
     })[];
+    orinocoflow_version?: string | undefined;
 }>;
 export type Workflow = z.infer<typeof WorkflowSchema>;
 export declare function parse(raw: unknown): Workflow;
+export declare const NodeSpecSchema: z.ZodObject<{
+    node_type: z.ZodString;
+    description: z.ZodOptional<z.ZodString>;
+    config: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
+        type: z.ZodOptional<z.ZodString>;
+        required: z.ZodOptional<z.ZodBoolean>;
+        description: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        type?: string | undefined;
+        required?: boolean | undefined;
+        description?: string | undefined;
+    }, {
+        type?: string | undefined;
+        required?: boolean | undefined;
+        description?: string | undefined;
+    }>>>;
+    inputs: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        type: z.ZodOptional<z.ZodString>;
+        description: z.ZodOptional<z.ZodString>;
+    } & {
+        required: z.ZodOptional<z.ZodBoolean>;
+    }, "strip", z.ZodTypeAny, {
+        name: string;
+        type?: string | undefined;
+        required?: boolean | undefined;
+        description?: string | undefined;
+    }, {
+        name: string;
+        type?: string | undefined;
+        required?: boolean | undefined;
+        description?: string | undefined;
+    }>, "many">>;
+    outputs: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        type: z.ZodOptional<z.ZodString>;
+        description: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        name: string;
+        type?: string | undefined;
+        description?: string | undefined;
+    }, {
+        name: string;
+        type?: string | undefined;
+        description?: string | undefined;
+    }>, "many">>;
+}, "strip", z.ZodTypeAny, {
+    node_type: string;
+    description?: string | undefined;
+    config?: Record<string, {
+        type?: string | undefined;
+        required?: boolean | undefined;
+        description?: string | undefined;
+    }> | undefined;
+    inputs?: {
+        name: string;
+        type?: string | undefined;
+        required?: boolean | undefined;
+        description?: string | undefined;
+    }[] | undefined;
+    outputs?: {
+        name: string;
+        type?: string | undefined;
+        description?: string | undefined;
+    }[] | undefined;
+}, {
+    node_type: string;
+    description?: string | undefined;
+    config?: Record<string, {
+        type?: string | undefined;
+        required?: boolean | undefined;
+        description?: string | undefined;
+    }> | undefined;
+    inputs?: {
+        name: string;
+        type?: string | undefined;
+        required?: boolean | undefined;
+        description?: string | undefined;
+    }[] | undefined;
+    outputs?: {
+        name: string;
+        type?: string | undefined;
+        description?: string | undefined;
+    }[] | undefined;
+}>;
+export type NodeSpec = z.infer<typeof NodeSpecSchema>;
+export declare function parseNodeSpec(raw: unknown): NodeSpec;
 export type WorkflowState = Record<string, unknown>;
 export type WorkflowEvent = {
     type: "workflow_start";
@@ -316,6 +460,21 @@ export type WorkflowEvent = {
     conditionResult?: boolean;
     retriesExhausted?: boolean;
     onExhausted?: string;
+} | {
+    type: "parallel_fork";
+    from: string;
+    targets: string[];
+    join: string;
+} | {
+    type: "parallel_join";
+    from: string;
+    join: string;
+    targets: string[];
+} | {
+    type: "parallel_branch_error";
+    branchEntry: string;
+    join: string;
+    error: Error;
 } | {
     type: "workflow_complete";
     finalState: WorkflowState;

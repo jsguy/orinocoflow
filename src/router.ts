@@ -1,4 +1,4 @@
-import type { Edge, Workflow, WorkflowState } from "./schemas.js";
+import type { Edge, ParallelEdge, Workflow, WorkflowState } from "./schemas.js";
 import { InvalidEdgeError, WorkflowConfigurationError } from "./errors.js";
 
 type Operator = "<" | ">" | "<=" | ">=" | "===" | "!==" | "includes" | "startsWith" | "endsWith";
@@ -46,29 +46,19 @@ export type ResolvedEdge =
   | { nextNodeId: string; edgeType: "standard"; conditionResult?: undefined; retriesExhausted?: undefined }
   | { nextNodeId: string; edgeType: "conditional"; conditionResult: boolean; retriesExhausted?: boolean; onExhausted?: string };
 
-/**
- * Given the outgoing edges from the current node, current state, and workflow nodes,
- * return the next node ID (or undefined if terminal).
- * Mutates state.__retries__ to track per-edge retry counts.
- */
-export function resolveNextNode(
-  currentNodeId: string,
-  edges: Edge[],
+export type OutgoingResolution =
+  | { kind: "single"; resolution: ResolvedEdge }
+  | { kind: "parallel"; edge: ParallelEdge };
+
+function resolveSingleOutgoingEdge(
+  edge: Exclude<Edge, { type: "parallel" }>,
   state: WorkflowState,
-  workflowNodes?: Workflow["nodes"],
-): ResolvedEdge | undefined {
-  const outgoing = edges.filter((e) => e.from === currentNodeId);
-
-  if (outgoing.length === 0) return undefined;
-
-  // Use the first outgoing edge (standard or conditional)
-  const edge = outgoing[0];
-
+  workflowNodes: Workflow["nodes"] | undefined,
+): ResolvedEdge {
   if (edge.type === "standard") {
     return { nextNodeId: edge.to, edgeType: "standard" };
   }
 
-  // conditional
   const conditionResult = evaluateOperator(
     state[edge.condition.field],
     edge.condition.operator,
@@ -76,15 +66,12 @@ export function resolveNextNode(
   );
   const loopbackTarget = conditionResult ? edge.routes.true : edge.routes.false;
 
-  // Check if this is a loopback (the target has already been visited, i.e. it's "behind" us).
-  // We track retries whenever maxRetries is defined on this edge.
   if (edge.maxRetries !== undefined) {
     const retryKey = `${edge.from}:${loopbackTarget}`;
     const retries = (state.__retries__ as Record<string, number> | undefined) ?? {};
     const count = retries[retryKey] ?? 0;
 
     if (count >= edge.maxRetries) {
-      // Exhausted — route to onExhausted
       if (!edge.onExhausted) {
         throw new WorkflowConfigurationError(
           `Edge from "${edge.from}" has maxRetries=${edge.maxRetries} but no onExhausted node defined.`,
@@ -104,9 +91,57 @@ export function resolveNextNode(
       };
     }
 
-    // Increment counter
     state.__retries__ = { ...retries, [retryKey]: count + 1 };
   }
 
   return { nextNodeId: loopbackTarget, edgeType: "conditional", conditionResult };
+}
+
+/**
+ * Resolve outgoing edges from the current node: either a single standard/conditional route or a parallel fork.
+ * At most one edge per `from` is required; multiple outgoing edges throw.
+ */
+export function resolveOutgoing(
+  currentNodeId: string,
+  edges: Edge[],
+  state: WorkflowState,
+  workflowNodes?: Workflow["nodes"],
+): OutgoingResolution | undefined {
+  const outgoing = edges.filter((e) => e.from === currentNodeId);
+
+  if (outgoing.length === 0) return undefined;
+  if (outgoing.length > 1) {
+    throw new WorkflowConfigurationError(
+      `Node "${currentNodeId}" has ${outgoing.length} outgoing edges; exactly one is required.`,
+    );
+  }
+
+  const edge = outgoing[0];
+  if (edge.type === "parallel") {
+    return { kind: "parallel", edge };
+  }
+
+  return { kind: "single", resolution: resolveSingleOutgoingEdge(edge, state, workflowNodes) };
+}
+
+/**
+ * Given the outgoing edges from the current node, current state, and workflow nodes,
+ * return the next node ID (or undefined if terminal).
+ * Mutates state.__retries__ to track per-edge retry counts.
+ * Throws if the outgoing edge is parallel — use resolveOutgoing instead.
+ */
+export function resolveNextNode(
+  currentNodeId: string,
+  edges: Edge[],
+  state: WorkflowState,
+  workflowNodes?: Workflow["nodes"],
+): ResolvedEdge | undefined {
+  const outgoing = resolveOutgoing(currentNodeId, edges, state, workflowNodes);
+  if (outgoing === undefined) return undefined;
+  if (outgoing.kind === "parallel") {
+    throw new WorkflowConfigurationError(
+      `Node "${currentNodeId}" has a parallel outgoing edge; use resolveOutgoing to handle fork/join.`,
+    );
+  }
+  return outgoing.resolution;
 }

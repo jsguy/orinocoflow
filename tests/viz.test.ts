@@ -77,6 +77,23 @@ const withMerge: Workflow = {
   ],
 };
 
+const withParallel: Workflow = {
+  orinocoflow_version: "1.0",
+  graph_id: "par",
+  entry_point: "fan",
+  nodes: [
+    { id: "fan", type: "fan" },
+    { id: "a", type: "a" },
+    { id: "b", type: "b" },
+    { id: "join", type: "join" },
+  ],
+  edges: [
+    { from: "fan", type: "parallel", targets: ["a", "b"], join: "join" },
+    { from: "a", to: "join", type: "standard" },
+    { from: "b", to: "join", type: "standard" },
+  ],
+};
+
 const withRetry: Workflow = {
   orinocoflow_version: "1.0",
   graph_id: "retry",
@@ -141,6 +158,13 @@ describe("renderViz", () => {
     const output = renderViz(withRetry);
     expect(output).toContain("(retry: 2, exhausted: handoff)");
     expect(output).toContain("[passed === false]");
+  });
+
+  it("renders parallel fork branches", () => {
+    const output = renderViz(withParallel);
+    expect(output).toContain("[parallel → join]");
+    expect(output).toContain("a");
+    expect(output).toContain("b");
   });
 
   it("renders odt-pipeline matching expected structure", async () => {

@@ -23,3 +23,9 @@ export declare class SubWorkflowNotFoundError extends Error {
 export declare class WorkflowConfigurationError extends Error {
     constructor(message: string);
 }
+export declare class ParallelBranchDidNotConvergeError extends Error {
+    readonly branchEntry: string;
+    readonly expectedJoin: string;
+    readonly actualTerminal: string | undefined;
+    constructor(branchEntry: string, expectedJoin: string, actualTerminal: string | undefined);
+}

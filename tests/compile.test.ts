@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { writeFile, readFile } from "node:fs/promises";
 import { compileFile, transformYamlToWorkflow } from "../src/cli/compile.js";
 import { ZodError } from "zod";
+import { WorkflowConfigurationError } from "../src/errors.js";
 
 const YAML_PATH = "examples/odt-pipeline.yaml";
 const JSON_PATH = "examples/odt-pipeline.json";
@@ -51,6 +52,26 @@ describe("compileFile", () => {
   it("throws on unsupported file extension", async () => {
     await writeFile("/tmp/workflow.toml", "");
     await expect(compileFile("/tmp/workflow.toml")).rejects.toThrow(/Unsupported file extension/);
+  });
+
+  it("throws WorkflowConfigurationError when join has illegal ingress", async () => {
+    const yaml = `
+graph_id: bad-par
+entry_point: fan
+nodes:
+  - { id: fan, type: t }
+  - { id: a, type: t }
+  - { id: b, type: t }
+  - { id: join, type: t }
+  - { id: side, type: t }
+edges:
+  - { from: fan, type: parallel, targets: [a, b], join: join }
+  - { from: a, to: join, type: standard }
+  - { from: b, to: join, type: standard }
+  - { from: side, to: join, type: standard }
+`;
+    await writeFile("/tmp/bad-parallel-join.yaml", yaml);
+    await expect(compileFile("/tmp/bad-parallel-join.yaml")).rejects.toThrow(WorkflowConfigurationError);
   });
 });
 

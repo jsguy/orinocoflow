@@ -1,7 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
 import { runWorkflow, runWorkflowStream } from "../src/execute.js";
 import { parse } from "../src/schemas.js";
-import { WorkflowCycleError, WorkflowAbortedError } from "../src/errors.js";
+import {
+  WorkflowCycleError,
+  WorkflowAbortedError,
+  WorkflowConfigurationError,
+} from "../src/errors.js";
 import type { WorkflowNode, WorkflowState } from "../src/schemas.js";
 
 const makeLinearWorkflow = () =>
@@ -144,6 +148,129 @@ describe("runWorkflow", () => {
     await expect(
       runWorkflow(workflow, {}, { handlers: {} }),
     ).rejects.toThrow("Node not found");
+  });
+
+  const makeParallelWorkflow = () =>
+    parse({
+      orinocoflow_version: "1.0",
+      graph_id: "par_01",
+      entry_point: "pre",
+      nodes: [
+        { id: "pre", type: "task" },
+        { id: "fan", type: "task" },
+        { id: "branch_a", type: "task" },
+        { id: "branch_b", type: "task" },
+        { id: "join", type: "task" },
+      ],
+      edges: [
+        { from: "pre", to: "fan", type: "standard" },
+        { from: "fan", type: "parallel", targets: ["branch_a", "branch_b"], join: "join" },
+        { from: "branch_a", to: "join", type: "standard" },
+        { from: "branch_b", to: "join", type: "standard" },
+      ],
+    });
+
+  it("runs parallel branches and merges state at join", async () => {
+    const workflow = makeParallelWorkflow();
+    const handler = async (node: WorkflowNode, state: WorkflowState) => {
+      if (node.id === "branch_a") return { ...state, a: 1 };
+      if (node.id === "branch_b") return { ...state, b: 2 };
+      return state;
+    };
+    const { state, trace } = await runCompleted(workflow, { base: true }, { handlers: { task: handler } });
+    expect(state.base).toBe(true);
+    expect(state.a).toBe(1);
+    expect(state.b).toBe(2);
+    expect(trace.some((e) => e.type === "parallel_fork")).toBe(true);
+    expect(trace.some((e) => e.type === "parallel_join")).toBe(true);
+    const joinIdx = trace.findIndex((e) => e.type === "parallel_join");
+    const completeIdx = trace.findIndex((e) => e.type === "workflow_complete");
+    expect(completeIdx).toBeGreaterThan(joinIdx);
+  });
+
+  it("runs parallel branches concurrently (overlap in time)", async () => {
+    const workflow = makeParallelWorkflow();
+    let overlap = false;
+    let active = 0;
+    const handler = async (node: WorkflowNode, state: WorkflowState) => {
+      if (node.id !== "branch_a" && node.id !== "branch_b") return state;
+      active++;
+      if (active >= 2) overlap = true;
+      await new Promise((r) => setTimeout(r, 15));
+      active--;
+      return state;
+    };
+    await runCompleted(workflow, {}, { handlers: { task: handler } });
+    expect(overlap).toBe(true);
+  });
+
+  it("throws WorkflowConfigurationError on strict parallel merge conflict", async () => {
+    const workflow = makeParallelWorkflow();
+    const handler = async (node: WorkflowNode, state: WorkflowState) => {
+      if (node.id === "branch_a" || node.id === "branch_b") return { ...state, x: node.id === "branch_a" ? 1 : 2 };
+      return state;
+    };
+    await expect(
+      runWorkflow(workflow, {}, { handlers: { task: handler }, parallelMerge: "strict" }),
+    ).rejects.toThrow(WorkflowConfigurationError);
+  });
+
+  it("overwrites on parallel merge when parallelMerge is overwrite", async () => {
+    const workflow = makeParallelWorkflow();
+    const handler = async (node: WorkflowNode, state: WorkflowState) => {
+      if (node.id === "branch_a" || node.id === "branch_b") return { ...state, x: node.id === "branch_a" ? 1 : 2 };
+      return state;
+    };
+    const { state } = await runCompleted(workflow, {}, { handlers: { task: handler }, parallelMerge: "overwrite" });
+    expect(state.x).toBe(2);
+  });
+
+  it("aborts sibling branches on first failure (fail-fast)", async () => {
+    const workflow = parse({
+      orinocoflow_version: "1.0",
+      graph_id: "par_fail",
+      entry_point: "pre",
+      nodes: [
+        { id: "pre", type: "task" },
+        { id: "fan", type: "task" },
+        { id: "branch_a", type: "task" },
+        { id: "b1", type: "task" },
+        { id: "b2", type: "task" },
+        { id: "join", type: "task" },
+      ],
+      edges: [
+        { from: "pre", to: "fan", type: "standard" },
+        { from: "fan", type: "parallel", targets: ["branch_a", "b1"], join: "join" },
+        { from: "branch_a", to: "join", type: "standard" },
+        { from: "b1", to: "b2", type: "standard" },
+        { from: "b2", to: "join", type: "standard" },
+      ],
+    });
+    let b2Ran = false;
+    const handler = async (node: WorkflowNode, state: WorkflowState) => {
+      if (node.id === "branch_a") throw new Error("boom");
+      if (node.id === "b1") await new Promise((r) => setTimeout(r, 30));
+      if (node.id === "b2") b2Ran = true;
+      return state;
+    };
+    await expect(runWorkflow(workflow, {}, { handlers: { task: handler } })).rejects.toThrow("boom");
+    expect(b2Ran).toBe(false);
+  });
+
+  it("emits parallel_branch_error before failing", async () => {
+    const workflow = makeParallelWorkflow();
+    const trace: import("../src/schemas.js").WorkflowEvent[] = [];
+    const handler = async (node: WorkflowNode) => {
+      if (node.id === "branch_b") throw new Error("branch fail");
+      return {};
+    };
+    await expect(
+      runWorkflow(workflow, {}, {
+        handlers: { task: handler },
+        onEvent: (e) => trace.push(e),
+      }),
+    ).rejects.toThrow();
+    expect(trace.some((e) => e.type === "parallel_branch_error")).toBe(true);
   });
 });
 

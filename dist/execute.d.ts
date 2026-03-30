@@ -11,6 +11,10 @@ export interface RunOptions {
     onEvent?: (event: WorkflowEvent) => void;
     /** Internal: prefix for sub-workflow event nodeIds */
     _nodeIdPrefix?: string;
+    /** How to merge branch end states after a parallel fork. Default "strict". */
+    parallelMerge?: "strict" | "overwrite";
+    /** @internal abort when another parallel branch fails (fail-fast) */
+    _parallelSiblingAbort?: AbortSignal;
 }
 export interface ResumeOptions {
     /** Additional state to merge onto the snapshot state (takes precedence) */

@@ -1,7 +1,7 @@
 export { parse, parseNodeSpec } from "./schemas.js";
 export { runWorkflowStream, runWorkflow, resumeWorkflow } from "./execute.js";
 export type { RunOptions, ResumeOptions } from "./execute.js";
-export { evaluateOperator, resolveNextNode } from "./router.js";
+export { evaluateOperator, resolveNextNode, resolveOutgoing } from "./router.js";
 export {
   NodeNotFoundError,
   HandlerError,
@@ -10,7 +10,9 @@ export {
   InvalidEdgeError,
   SubWorkflowNotFoundError,
   WorkflowConfigurationError,
+  ParallelBranchDidNotConvergeError,
 } from "./errors.js";
+export { validateParallelWorkflow } from "./validate.js";
 export type {
   NodeSpec,
   Workflow,
@@ -20,6 +22,7 @@ export type {
   Edge,
   StandardEdge,
   ConditionalEdge,
+  ParallelEdge,
   SuspendedExecution,
   WorkflowResult,
 } from "./schemas.js";
@@ -29,6 +32,7 @@ export {
   EdgeSchema,
   StandardEdgeSchema,
   ConditionalEdgeSchema,
+  ParallelEdgeSchema,
   WorkflowNodeSchema,
 } from "./schemas.js";
 export type { SessionStore } from "./store.js";

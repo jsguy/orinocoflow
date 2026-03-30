@@ -52,3 +52,17 @@ export class WorkflowConfigurationError extends Error {
     this.name = "WorkflowConfigurationError";
   }
 }
+
+export class ParallelBranchDidNotConvergeError extends Error {
+  constructor(
+    public readonly branchEntry: string,
+    public readonly expectedJoin: string,
+    public readonly actualTerminal: string | undefined,
+  ) {
+    super(
+      `Parallel branch from "${branchEntry}" did not converge to join "${expectedJoin}"` +
+        (actualTerminal !== undefined ? ` (ended at "${actualTerminal}")` : " (no successor to join)"),
+    );
+    this.name = "ParallelBranchDidNotConvergeError";
+  }
+}

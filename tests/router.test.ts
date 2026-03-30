@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { evaluateOperator, resolveNextNode } from "../src/router.js";
+import { evaluateOperator, resolveNextNode, resolveOutgoing } from "../src/router.js";
 import type { Edge } from "../src/schemas.js";
+import { WorkflowConfigurationError } from "../src/errors.js";
 
 describe("evaluateOperator", () => {
   it("< operator", () => {
@@ -104,5 +105,33 @@ describe("resolveNextNode", () => {
     const otherEdge: Edge = { from: "z", to: "y", type: "standard" };
     const result = resolveNextNode("a", [otherEdge, standardEdge], {});
     expect(result).toEqual({ nextNodeId: "b", edgeType: "standard" });
+  });
+
+  it("throws when node has multiple outgoing edges", () => {
+    const e1: Edge = { from: "a", to: "b", type: "standard" };
+    const e2: Edge = { from: "a", to: "c", type: "standard" };
+    expect(() => resolveNextNode("a", [e1, e2], {})).toThrow(WorkflowConfigurationError);
+  });
+
+  it("throws when outgoing edge is parallel (use resolveOutgoing)", () => {
+    const parallel: Edge = { from: "fan", type: "parallel", targets: ["x", "y"], join: "j" };
+    expect(() => resolveNextNode("fan", [parallel], {})).toThrow(/parallel outgoing edge/);
+  });
+});
+
+describe("resolveOutgoing", () => {
+  it("returns parallel kind for parallel edge", () => {
+    const parallel: Edge = { from: "fan", type: "parallel", targets: ["a", "b"], join: "join" };
+    const r = resolveOutgoing("fan", [parallel], {});
+    expect(r).toEqual({
+      kind: "parallel",
+      edge: parallel,
+    });
+  });
+
+  it("returns single kind for standard edge", () => {
+    const e: Edge = { from: "a", to: "b", type: "standard" };
+    const r = resolveOutgoing("a", [e], {});
+    expect(r).toEqual({ kind: "single", resolution: { nextNodeId: "b", edgeType: "standard" } });
   });
 });

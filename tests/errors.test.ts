@@ -7,6 +7,7 @@ import {
   InvalidEdgeError,
   SubWorkflowNotFoundError,
   WorkflowConfigurationError,
+  ParallelBranchDidNotConvergeError,
 } from "../src/errors.js";
 
 describe("error class properties", () => {
@@ -38,6 +39,14 @@ describe("error class properties", () => {
     expect(err.nodeId).toBe("missing-step");
   });
 
+  it("ParallelBranchDidNotConvergeError exposes branchEntry, expectedJoin, actualTerminal", () => {
+    const err = new ParallelBranchDidNotConvergeError("a", "join", "side");
+    expect(err.branchEntry).toBe("a");
+    expect(err.expectedJoin).toBe("join");
+    expect(err.actualTerminal).toBe("side");
+    expect(err.message).toContain("join");
+  });
+
   it("all engine error classes are instanceof Error with non-empty message", () => {
     const errors = [
       new NodeNotFoundError("n"),
@@ -47,6 +56,7 @@ describe("error class properties", () => {
       new InvalidEdgeError("bad op"),
       new SubWorkflowNotFoundError("wf"),
       new WorkflowConfigurationError("misconfigured"),
+      new ParallelBranchDidNotConvergeError("t", "j", undefined),
     ];
 
     for (const err of errors) {

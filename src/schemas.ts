@@ -33,13 +33,22 @@ export const ConditionalEdgeSchema = z.object({
   onExhausted: z.string().optional(),
 });
 
+export const ParallelEdgeSchema = z.object({
+  from: z.string(),
+  type: z.literal("parallel"),
+  targets: z.array(z.string()).min(2),
+  join: z.string(),
+});
+
 export const EdgeSchema = z.discriminatedUnion("type", [
   StandardEdgeSchema,
   ConditionalEdgeSchema,
+  ParallelEdgeSchema,
 ]);
 
 export type StandardEdge = z.infer<typeof StandardEdgeSchema>;
 export type ConditionalEdge = z.infer<typeof ConditionalEdgeSchema>;
+export type ParallelEdge = z.infer<typeof ParallelEdgeSchema>;
 export type Edge = z.infer<typeof EdgeSchema>;
 
 // ─── Workflow schema ──────────────────────────────────────────────────────────
@@ -101,6 +110,14 @@ export type WorkflowEvent =
   | { type: "node_start"; nodeId: string; nodeType: string; state: WorkflowState }
   | { type: "node_complete"; nodeId: string; nodeType: string; state: WorkflowState; durationMs: number }
   | { type: "edge_taken"; from: string; to: string; edgeType: "standard" | "conditional"; conditionResult?: boolean; retriesExhausted?: boolean; onExhausted?: string }
+  | {
+      type: "parallel_fork";
+      from: string;
+      targets: string[];
+      join: string;
+    }
+  | { type: "parallel_join"; from: string; join: string; targets: string[] }
+  | { type: "parallel_branch_error"; branchEntry: string; join: string; error: Error }
   | { type: "workflow_complete"; finalState: WorkflowState; durationMs: number }
   | { type: "workflow_suspended"; nodeId: string }
   | { type: "workflow_resume" }

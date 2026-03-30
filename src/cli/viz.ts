@@ -1,4 +1,4 @@
-import type { Workflow, Edge, ConditionalEdge } from "../schemas.js";
+import type { Workflow, Edge, ConditionalEdge, ParallelEdge } from "../schemas.js";
 
 type AdjList = Map<string, Edge[]>;
 
@@ -57,6 +57,27 @@ function dfs(
       } else {
         lines.push(`${prefix}${connector}> ${target}`);
         dfs(target, adj, ancestors, rendered, prefix + continuation + "  ", lines);
+      }
+    } else if (edge.type === "parallel") {
+      const pe = edge as ParallelEdge;
+      for (let b = 0; b < pe.targets.length; b++) {
+        const target = pe.targets[b];
+        const bIsLast = isLast && b === pe.targets.length - 1;
+        const bConnector = bIsLast ? "└──" : "├──";
+        const bContinuation = bIsLast ? "   " : "│  ";
+        const label = `[parallel → ${pe.join}]`;
+
+        let targetLabel = target;
+        if (ancestors.has(target)) {
+          targetLabel += " (loop)";
+          lines.push(`${prefix}${bConnector}${label}──> ${targetLabel}`);
+        } else if (rendered.has(target)) {
+          targetLabel += " (visited)";
+          lines.push(`${prefix}${bConnector}${label}──> ${targetLabel}`);
+        } else {
+          lines.push(`${prefix}${bConnector}${label}──> ${target}`);
+          dfs(target, adj, ancestors, rendered, prefix + bContinuation + "  ", lines);
+        }
       }
     } else {
       // conditional — emit two branches: true then false

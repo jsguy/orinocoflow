@@ -84,6 +84,28 @@ export async function runSimulation(
       console.log(`Step ${step} │ ${pad(label, colW)} │ state: ${stateStr}`);
     }
 
+    if (event.type === "parallel_fork") {
+      const blank = " ".repeat(`Step ${step}`.length);
+      const nodeBlank = pad("", colW);
+      console.log(
+        `${blank} │ ${nodeBlank} │ parallel fork: ${event.from} → [${event.targets.join(", ")}] → join ${event.join}`,
+      );
+    }
+
+    if (event.type === "parallel_join") {
+      const blank = " ".repeat(`Step ${step}`.length);
+      const nodeBlank = pad("", colW);
+      console.log(`${blank} │ ${nodeBlank} │ parallel join → ${event.join}`);
+    }
+
+    if (event.type === "parallel_branch_error") {
+      const blank = " ".repeat(`Step ${step}`.length);
+      const nodeBlank = pad("", colW);
+      console.log(
+        `${blank} │ ${nodeBlank} │ parallel branch error (${event.branchEntry}): ${event.error.message}`,
+      );
+    }
+
     if (event.type === "edge_taken") {
       const blank = " ".repeat(`Step ${step}`.length);
       const nodeBlank = pad("", colW);
