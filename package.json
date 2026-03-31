@@ -2,6 +2,27 @@
   "name": "orinocoflow",
   "version": "0.3.2",
   "description": "Minimalist TypeScript workflow engine for AI pipelines",
+  "keywords": [
+    "workflow",
+    "pipeline",
+    "ai",
+    "typescript",
+    "yaml",
+    "json",
+    "state-machine",
+    "hitl",
+    "streaming",
+    "orinocoflow",
+    "dag"
+  ],
+  "homepage": "https://github.com/jsguy/orinocoflow#readme",
+  "bugs": {
+    "url": "https://github.com/jsguy/orinocoflow/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jsguy/orinocoflow.git"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -12,7 +33,8 @@
   "files": [
     "dist",
     "README.md",
-    "README-examples.md"
+    "README-examples.md",
+    "llms.txt"
   ],
   "engines": {
     "node": ">=18.0.0"

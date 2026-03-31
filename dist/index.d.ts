@@ -1,3 +1,20 @@
+/**
+ * **orinocoflow** — workflow engine for AI pipelines: parse JSON workflows, run with async handlers,
+ * stream events, resume from snapshots. Use `parse` then `runWorkflow` or `runWorkflowStream`.
+ *
+ * @example
+ * ```ts
+ * import { parse, runWorkflow } from "orinocoflow";
+ *
+ * const workflow = parse({
+ *   graph_id: "g",
+ *   entry_point: "a",
+ *   nodes: [{ id: "a", type: "t" }],
+ *   edges: [],
+ * });
+ * await runWorkflow(workflow, {}, { handlers: { t: async (_n, s) => s } } });
+ * ```
+ */
 export { parse, parseNodeSpec } from "./schemas.js";
 export { runWorkflowStream, runWorkflow, resumeWorkflow } from "./execute.js";
 export type { RunOptions, ResumeOptions } from "./execute.js";

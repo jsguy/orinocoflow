@@ -1,0 +1,63 @@
+# orinocoflow
+
+Minimalist TypeScript workflow engine for AI pipelines: workflows as JSON/YAML data, plain async handlers, streaming execution events, optional suspend/resume (HITL), and a small CLI (`oflow`).
+
+## Install
+
+```sh
+npm install orinocoflow
+```
+
+Requires Node.js 18+.
+
+## Primary API (package entry `orinocoflow`)
+
+- **`parse(raw)`** — Validate and parse an in-memory workflow object (Zod). Use before `runWorkflow`.
+- **`runWorkflow(workflow, initialState, options)`** — Execute; optional `onEvent` for callback-style streaming. Returns `WorkflowResult` with `trace` of events.
+- **`runWorkflowStream(workflow, initialState, options)`** — Same execution, events via `for await` (async iterable).
+- **`resumeWorkflow(snapshot, options)`** — Continue after a suspended run using a `SuspendedExecution` snapshot.
+- **`parseNodeSpec(raw)`** — Parse optional per-node-type YAML/JSON specs (documentation / LLM tooling).
+
+Handlers are **`Record<string, handler>` keyed by `node.type`**, not by node id.
+
+## Subpath `orinocoflow/compile`
+
+- **`compileFile(path)`** — Load `.yaml`, `.yml`, or `.json` from disk → `Workflow`.
+- **`transformYamlToWorkflow(doc)`** — Parse an already-loaded YAML/JSON document object.
+
+## Router helpers (advanced / custom tooling)
+
+- **`evaluateOperator`**, **`resolveOutgoing`**, **`resolveNextNode`** — Condition evaluation and edge resolution; the engine uses these internally.
+
+## Schema versioning
+
+Optional top-level **`orinocoflow_version`** string on each workflow for compatibility notes. A generic **`version` key is not read** — use `orinocoflow_version` only.
+
+## Patterns
+
+### Linear pipeline
+
+Three nodes, two standard edges, handlers for each `type` (`integration`, `llm`, `local_script`).
+
+### Conditional routing
+
+Edges with `type: "conditional"`, `condition: { field, operator, value }`, `routes: { true, false }`. Optional `maxRetries` + `onExhausted` for retry escalation.
+
+### Parallel fork/join
+
+Edge `type: "parallel"` with `targets: [...]` and `join`. Validate graphs with **`validateParallelWorkflow`** if building UIs or compilers.
+
+### Suspend / resume
+
+Execution can suspend with a snapshot; persist JSON, then **`resumeWorkflow`** with merged state.
+
+## CLI (global `oflow` when installed)
+
+`oflow compile`, `oflow viz`, `oflow simulate` — see human docs.
+
+## Human documentation
+
+- **README.md** — Overview, streaming, errors, API tables.
+- **README-examples.md** — Runnable examples, CLI commands, mock files for `simulate`.
+
+Examples in the git repo live under **`examples/`** (not shipped in the npm tarball by default).

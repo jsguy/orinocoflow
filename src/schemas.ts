@@ -63,6 +63,25 @@ export const WorkflowSchema = z.object({
 
 export type Workflow = z.infer<typeof WorkflowSchema>;
 
+/**
+ * Parse and validate a workflow object (throws if invalid). Always call this (or `compileFile` from `"orinocoflow/compile"`)
+ * before executing.
+ *
+ * @param raw - Plain object matching the workflow schema (from JSON, YAML, or literals).
+ * @returns A typed {@link Workflow}.
+ * @example
+ * ```ts
+ * import { parse, runWorkflow } from "orinocoflow";
+ *
+ * const workflow = parse({
+ *   graph_id: "demo",
+ *   entry_point: "start",
+ *   nodes: [{ id: "start", type: "noop" }],
+ *   edges: [],
+ * });
+ * await runWorkflow(workflow, {}, { handlers: { noop: async (_n, s) => s } } });
+ * ```
+ */
 export function parse(raw: unknown): Workflow {
   return WorkflowSchema.parse(raw);
 }
@@ -95,6 +114,22 @@ export const NodeSpecSchema = z.object({
 
 export type NodeSpec = z.infer<typeof NodeSpecSchema>;
 
+/**
+ * Parse a node-spec document (YAML/JSON) describing inputs/outputs for a `node_type`.
+ * For documentation and tooling — not required at runtime for execution.
+ *
+ * @param raw - Object matching {@link NodeSpecSchema}.
+ * @returns A typed {@link NodeSpec}.
+ * @example
+ * ```ts
+ * import { parseNodeSpec } from "orinocoflow";
+ *
+ * const spec = parseNodeSpec({
+ *   node_type: "llm",
+ *   inputs: [{ name: "prompt", required: true }],
+ * });
+ * ```
+ */
 export function parseNodeSpec(raw: unknown): NodeSpec {
   return NodeSpecSchema.parse(raw);
 }

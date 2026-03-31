@@ -27,16 +27,49 @@ npm install orinocoflow
 
 ## Quick start
 
-[`examples/quick-start.ts`](examples/quick-start.ts) is the full runnable version (parse URL → fake "LLM" line → log). From a **git clone** at the repo root: `npx tsx examples/quick-start.ts`. Step-by-step: [README-examples.md](README-examples.md).
-
-Minimal shape in code:
+**After `npm install orinocoflow`**, save as `main.mts` (or `main.ts` with `"module": "NodeNext"` in `tsconfig`) and run with `npx tsx main.mts` or compile with `tsc` and run with `node`:
 
 ```ts
 import { parse, runWorkflow } from "orinocoflow";
 
-const workflow = parse({ /* graph_id, entry_point, nodes, edges */ });
-const result = await runWorkflow(workflow, initialState, { handlers: { /* by node.type */ } });
+const workflow = parse({
+  orinocoflow_version: "1.0",
+  graph_id: "my_pipeline",
+  entry_point: "fetch",
+  nodes: [
+    { id: "fetch", type: "integration" },
+    { id: "draft", type: "llm" },
+    { id: "publish", type: "local_script" },
+  ],
+  edges: [
+    { from: "fetch", to: "draft", type: "standard" },
+    { from: "draft", to: "publish", type: "standard" },
+  ],
+});
+
+const result = await runWorkflow(workflow, { url: "https://example.com/docs/guide" }, {
+  handlers: {
+    integration: async (_node, state) => {
+      const u = new URL(String(state.url));
+      return { ...state, host: u.hostname, path: u.pathname || "/" };
+    },
+    llm: async (_node, state) => ({
+      ...state,
+      draft: `Page on ${state.host}: path has ${String(state.path).length} chars (${state.path})`,
+    }),
+    local_script: async (_node, state) => {
+      console.log("Publishing →", state.draft);
+      return { ...state, published: true };
+    },
+  },
+});
+
+if (result.status === "completed") {
+  console.log("Final state:", result.state);
+}
 ```
+
+**From a git clone** of this repo (not from the npm tarball): the same logic lives in [`examples/quick-start.ts`](examples/quick-start.ts), which imports from the local `src` tree for development — run `npx tsx examples/quick-start.ts` from the **repository root** after `npm install`. For file-by-file notes and more demos, see [README-examples.md](README-examples.md).
 
 ## Programmatic compile (files on disk)
 
