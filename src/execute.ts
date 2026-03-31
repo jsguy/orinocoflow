@@ -1,4 +1,12 @@
-import type { Workflow, WorkflowState, WorkflowEvent, WorkflowNode, WorkflowResult, SuspendedExecution } from "./schemas.js";
+import type {
+  Workflow,
+  WorkflowState,
+  WorkflowEvent,
+  WorkflowNode,
+  WorkflowResult,
+  SuspendedExecution,
+  EnteredViaEdge,
+} from "./schemas.js";
 import { parse } from "./schemas.js";
 import { resolveNextNode, resolveOutgoing } from "./router.js";
 import {
@@ -253,6 +261,8 @@ async function _execute(
 
   let currentNodeId: string | undefined = entryNodeId ?? workflow.entry_point;
   let currentState: WorkflowState = { ...initialState };
+  // Last single-edge routing in this execution (unprefixed ids); used when suspending at an interrupt.
+  let enteredViaEdge: EnteredViaEdge | undefined;
 
   while (currentNodeId !== undefined) {
     if (signal?.aborted) {
@@ -285,6 +295,7 @@ async function _execute(
         suspendedAtNodeId: node.id,
         state: currentState,
         workflowSnapshot: workflow,
+        ...(enteredViaEdge !== undefined ? { enteredViaEdge } : {}),
       };
       emit({ type: "workflow_suspended", nodeId: prefixedNodeId });
       return { status: "suspended", snapshot, trace: [] };
@@ -439,6 +450,13 @@ async function _execute(
 
     if (outgoing?.kind === "single") {
       const resolution = outgoing.resolution;
+      enteredViaEdge = {
+        from: currentNodeId!,
+        to: resolution.nextNodeId,
+        edgeType: resolution.edgeType,
+        ...(resolution.conditionResult !== undefined ? { conditionResult: resolution.conditionResult } : {}),
+        ...(resolution.retriesExhausted ? { retriesExhausted: true, onExhausted: resolution.onExhausted } : {}),
+      };
       emit({
         type: "edge_taken",
         from: prefixedNodeId,

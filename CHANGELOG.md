@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.3.2] - 2026-04-01
+### Added
+- `enteredViaEdge` metadata on `SuspendedExecution` snapshots, mirroring the last `edge_taken` into an interrupt to simplify host integrations around retries and handoffs.
+
 ## [0.3.1] - 2026-03-30
 ### Added
 - Expanded `parallelMerge` to accept a custom merge function for more flexible result aggregation.

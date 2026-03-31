@@ -8,7 +8,7 @@ See the main [README](README.md) for install, schema, API, and short illustrativ
 
 ## Human-in-the-loop pattern
 
-End-to-end: define a workflow with an **`interrupt`** node, run once (suspends), persist `snapshot`, then **`resumeWorkflow`** with extra state.
+End-to-end: define a workflow with an **`interrupt`** node, run once (suspends), persist `snapshot`, then **`resumeWorkflow`** with extra state. The snapshot includes **`enteredViaEdge`** so callers can see which node routed into the interrupt without scanning `trace`.
 
 ```ts
 import { parse, runWorkflow, resumeWorkflow, MemorySessionStore } from "orinocoflow";
@@ -41,6 +41,10 @@ const workflow = parse({
 
 const result = await runWorkflow(workflow, {}, { handlers });
 if (result.status === "suspended") {
+  // enteredViaEdge tells you how you arrived at the interrupt, using unprefixed node ids.
+  // For this workflow, it will be: { from: "draft", to: "review", edgeType: "standard" }.
+  console.log("suspended via edge:", result.snapshot.enteredViaEdge);
+
   const sessionId = crypto.randomUUID();
   await sessions.set(sessionId, result.snapshot);
   const snapshot = await sessions.get(sessionId);

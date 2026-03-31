@@ -12,7 +12,7 @@ export {
   WorkflowConfigurationError,
   ParallelBranchDidNotConvergeError,
 } from "./errors.js";
-export { validateParallelWorkflow } from "./validate.js";
+export { validateParallelWorkflow } from "./validate";
 export type {
   NodeSpec,
   Workflow,
@@ -23,6 +23,7 @@ export type {
   StandardEdge,
   ConditionalEdge,
   ParallelEdge,
+  EnteredViaEdge,
   SuspendedExecution,
   WorkflowResult,
 } from "./schemas.js";

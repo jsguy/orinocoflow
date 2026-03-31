@@ -489,11 +489,28 @@ export type WorkflowEvent = {
     nodeId?: string;
     error: Error;
 };
+/**
+ * The last single-edge transition that led into the node where execution suspended.
+ * Uses unprefixed workflow-local node ids (same namespace as `suspendedAtNodeId`).
+ */
+export interface EnteredViaEdge {
+    from: string;
+    to: string;
+    edgeType: "standard" | "conditional";
+    conditionResult?: boolean;
+    retriesExhausted?: boolean;
+    onExhausted?: string;
+}
 export interface SuspendedExecution<S = WorkflowState> {
     workflowId: string;
     suspendedAtNodeId: string;
     state: S;
     workflowSnapshot: Workflow;
+    /**
+     * How execution reached this interrupt — mirrors the `edge_taken` event into `suspendedAtNodeId`.
+     * Omitted when the interrupt is the workflow entry point (no prior edge in this run).
+     */
+    enteredViaEdge?: EnteredViaEdge;
 }
 export type WorkflowResult<S = WorkflowState> = {
     status: "completed";

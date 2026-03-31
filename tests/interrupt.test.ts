@@ -79,6 +79,11 @@ describe("interrupt node", () => {
     expect(result.snapshot.suspendedAtNodeId).toBe("wait");
     expect(result.snapshot.state).toEqual({ foo: "bar" });
     expect(result.snapshot.workflowSnapshot.graph_id).toBe("interrupt_01");
+    expect(result.snapshot.enteredViaEdge).toEqual({
+      from: "before",
+      to: "wait",
+      edgeType: "standard",
+    });
   });
 
   it("does not execute nodes after the interrupt", async () => {
@@ -176,6 +181,49 @@ describe("interrupt node", () => {
     expect(resumed.status).toBe("completed");
     if (resumed.status !== "completed") return;
     expect(resumed.state.v).toBe(42);
+  });
+
+  it("7.7 enteredViaEdge tracks exhausted retry edges when suspending at an interrupt", async () => {
+    const workflow = parse({
+      orinocoflow_version: "1.0",
+      graph_id: "retry_interrupt",
+      entry_point: "coder",
+      nodes: [
+        { id: "coder", type: "task" },
+        { id: "qe", type: "task" },
+        { id: "handoff", type: "interrupt" },
+      ],
+      edges: [
+        { from: "coder", to: "qe", type: "standard" },
+        {
+          from: "qe",
+          type: "conditional",
+          condition: { field: "passed", operator: "===", value: true },
+          routes: { true: "coder", false: "coder" },
+          maxRetries: 0,
+          onExhausted: "handoff",
+        },
+      ],
+    });
+
+    const result = await runWorkflow(
+      workflow,
+      { passed: false },
+      { handlers: { task: identityHandler }, maxSteps: 10 },
+    );
+
+    expect(result.status).toBe("suspended");
+    if (result.status !== "suspended") return;
+
+    expect(result.snapshot.suspendedAtNodeId).toBe("handoff");
+    expect(result.snapshot.enteredViaEdge).toEqual({
+      from: "qe",
+      to: "handoff",
+      edgeType: "conditional",
+      conditionResult: false,
+      retriesExhausted: true,
+      onExhausted: "handoff",
+    });
   });
 });
 

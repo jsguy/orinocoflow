@@ -559,6 +559,7 @@ async function _execute(workflow, initialState, options, emit, entryNodeId, step
   });
   let currentNodeId = entryNodeId ?? workflow.entry_point;
   let currentState = { ...initialState };
+  let enteredViaEdge;
   while (currentNodeId !== void 0) {
     if (signal?.aborted) {
       emit({ type: "error", error: new WorkflowAbortedError() });
@@ -585,7 +586,8 @@ async function _execute(workflow, initialState, options, emit, entryNodeId, step
         workflowId: workflow.graph_id,
         suspendedAtNodeId: node.id,
         state: currentState,
-        workflowSnapshot: workflow
+        workflowSnapshot: workflow,
+        ...enteredViaEdge !== void 0 ? { enteredViaEdge } : {}
       };
       emit({ type: "workflow_suspended", nodeId: prefixedNodeId });
       return { status: "suspended", snapshot, trace: [] };
@@ -721,6 +723,13 @@ async function _execute(workflow, initialState, options, emit, entryNodeId, step
     }
     if (outgoing?.kind === "single") {
       const resolution = outgoing.resolution;
+      enteredViaEdge = {
+        from: currentNodeId,
+        to: resolution.nextNodeId,
+        edgeType: resolution.edgeType,
+        ...resolution.conditionResult !== void 0 ? { conditionResult: resolution.conditionResult } : {},
+        ...resolution.retriesExhausted ? { retriesExhausted: true, onExhausted: resolution.onExhausted } : {}
+      };
       emit({
         type: "edge_taken",
         from: prefixedNodeId,

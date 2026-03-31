@@ -319,7 +319,7 @@ const resumed = await resumeWorkflow(snapshot, {
 });
 ```
 
-`interrupt` nodes require no handler — the engine handles suspension automatically. A **full** store-and-resume walkthrough (workflow JSON + `parse` + `runWorkflow` + `MemorySessionStore`) is in [README-examples.md — Human-in-the-loop pattern](README-examples.md#human-in-the-loop-pattern). A live demo with network + Claude: [HN Roast](README-examples.md#hn-roast).
+`interrupt` nodes require no handler — the engine handles suspension automatically. When a run suspends at an interrupt that was reached via a single edge, the snapshot includes **`enteredViaEdge`** mirroring the last `edge_taken` into that node (unprefixed `from`/`to`, edge type, and any retry metadata). A **full** store-and-resume walkthrough (workflow JSON + `parse` + `runWorkflow` + `MemorySessionStore`) is in [README-examples.md — Human-in-the-loop pattern](README-examples.md#human-in-the-loop-pattern). A live demo with network + Claude: [HN Roast](README-examples.md#hn-roast).
 
 ## Retry limits on conditional edges
 
